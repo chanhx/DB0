@@ -1,7 +1,8 @@
+#[derive(Debug, PartialEq)]
 pub(super) enum Token<'a> {
     Keyword(Keyword),
 
-    Ident(&'a str),
+    Identifier(&'a str),
 
     Number(&'a str),
     String(&'a str),
@@ -27,6 +28,7 @@ pub(super) enum Token<'a> {
     Percent,
 }
 
+#[derive(Debug, PartialEq)]
 pub(super) enum Keyword {
     And,
     Asc,

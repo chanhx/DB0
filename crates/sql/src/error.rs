@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Error {
     line: usize,
     column: usize,
@@ -34,7 +34,7 @@ impl Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Details {
     UnexpectedChar(char),
     NoClosingQuoteForString,

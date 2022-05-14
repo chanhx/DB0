@@ -1,5 +1,5 @@
 use {
-    super::token::Token,
+    super::token::{Keyword, Token},
     crate::error::{Details, Error, Result},
     std::{iter::Peekable, str::CharIndices},
 };
@@ -19,6 +19,7 @@ impl<'a> Iterator for Lexer<'a> {
         let token = match self.iter.peek() {
             Some((_, '\'')) => self.scan_string(),
             Some((_, c)) if c.is_digit(10) => Ok(self.scan_number()),
+            Some((_, c)) if c.is_alphabetic() => Ok(self.scan_identifier()),
             _ => Ok(None),
         };
 
@@ -45,6 +46,13 @@ impl<'a> Lexer<'a> {
         while let Some(_) = self.iter.next_if(|(_, c)| func(c)) {}
     }
 
+    fn iter_offset(&mut self) -> usize {
+        self.iter
+            .peek()
+            .map(|&(i, _)| i - 1)
+            .unwrap_or(self.src.len() - 1)
+    }
+
     fn scan_string(&mut self) -> Result<Option<Token<'a>>> {
         let begin = self.iter.next_if(|&(_, c)| c == '\'');
         if begin.is_none() {
@@ -59,6 +67,7 @@ impl<'a> Lexer<'a> {
                     // check if it escapes a single quote
                     Some((_, '\'')) => _ = self.iter.next(),
                     _ => {
+                        // TODO: deal with escaping
                         return Ok(Some(Token::String(&self.src[begin..=i])));
                     }
                 },
@@ -88,13 +97,26 @@ impl<'a> Lexer<'a> {
         self.iter.next_if(|&(_, c)| c == '+' || c == '-');
         self.iter_next_while(|c| c.is_digit(10));
 
-        let end = self
-            .iter
-            .peek()
-            .map(|&(i, _)| i - 1)
-            .unwrap_or(self.src.len() - 1);
+        let end = self.iter_offset();
 
         Some(Token::Number(&self.src[begin..=end]))
+    }
+
+    fn scan_identifier(&mut self) -> Option<Token<'a>> {
+        let begin = self.iter.next_if(|&(_, c)| c.is_alphabetic());
+        if begin.is_none() {
+            return None;
+        }
+
+        let begin = begin.unwrap().0;
+        self.iter_next_while(|&c| c.is_alphanumeric() || c == '_');
+        let end = self.iter_offset();
+
+        let ident = &self.src[begin..=end];
+
+        Keyword::from_str(ident)
+            .map(Token::Keyword)
+            .or_else(|| Some(Token::Identifier(ident)))
     }
 }
 
@@ -104,13 +126,17 @@ mod tests {
 
     #[test]
     fn scan_string() {
-        let input = "'abc''DEF'";
-        let mut lexer = Lexer::new(input);
+        let strs = ["'abc''DEF'", "'ABC*DEF'"];
+        let input = strs.join(" ");
+        let expected_output = strs
+            .iter()
+            .map(|&s| Some(Ok(Token::String(s))))
+            .collect::<Vec<_>>();
+        let mut lexer = Lexer::new(&input);
 
-        match lexer.next() {
-            Some(Ok(Token::String(s))) => assert_eq!(s, input),
-            _ => unreachable!(),
-        }
+        expected_output
+            .iter()
+            .for_each(|output| assert_eq!(*output, lexer.next()));
     }
 
     #[test]
@@ -124,13 +150,33 @@ mod tests {
     #[test]
     fn scan_number() {
         let nums = ["123.", "123.456e+789"];
-        let input = format!("  {}   {}", nums[0], nums[1]);
+        let input = nums.join(" ");
+        let expected_output = nums
+            .iter()
+            .map(|&s| Some(Ok(Token::Number(s))))
+            .collect::<Vec<_>>();
 
         let mut lexer = Lexer::new(&input);
 
-        nums.iter().for_each(|&num| match lexer.next() {
-            Some(Ok(Token::Number(s))) => assert_eq!(s, num),
-            _ => unreachable!(),
-        });
+        expected_output
+            .iter()
+            .for_each(|output| assert_eq!(*output, lexer.next()));
+    }
+
+    #[test]
+    fn scan_ident() {
+        let input = "SELECT abc FROM def";
+        let expected_output = [
+            Some(Ok(Token::Keyword(Keyword::Select))),
+            Some(Ok(Token::Identifier("abc"))),
+            Some(Ok(Token::Keyword(Keyword::From))),
+            Some(Ok(Token::Identifier("def"))),
+        ];
+
+        let mut lexer = Lexer::new(&input);
+
+        expected_output
+            .iter()
+            .for_each(|token| assert_eq!(*token, lexer.next()));
     }
 }
