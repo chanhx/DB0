@@ -48,10 +48,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn iter_offset(&mut self) -> usize {
-        self.iter
-            .peek()
-            .map(|&(i, _)| i - 1)
-            .unwrap_or(self.src.len() - 1)
+        match self.iter.peek() {
+            Some(&(0, _)) => 0,
+            Some(&(i, _)) => i - 1,
+            None => self.src.len() - 1,
+        }
     }
 
     fn scan_string(&mut self) -> Result<Option<Token<'a>>> {
