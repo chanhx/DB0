@@ -20,6 +20,7 @@ impl<'a> Iterator for Lexer<'a> {
             Some((_, '\'')) => self.scan_string(),
             Some((_, c)) if c.is_digit(10) => Ok(self.scan_number()),
             Some((_, c)) if c.is_alphabetic() => Ok(self.scan_identifier()),
+            Some(_) => Ok(self.scan_symbol()),
             _ => Ok(None),
         };
 
@@ -109,11 +110,61 @@ impl<'a> Lexer<'a> {
             .map(Token::Keyword)
             .or_else(|| Some(Token::Identifier(ident)))
     }
+
+    fn scan_symbol(&mut self) -> Option<Token<'a>> {
+        let symbol = match self.iter.peek()?.1 {
+            '.' => Some(Token::Period),
+            '=' => Some(Token::Equal),
+            '>' => Some(Token::GreaterThan),
+            '<' => Some(Token::LessThan),
+            '+' => Some(Token::Plus),
+            '-' => Some(Token::Minus),
+            '*' => Some(Token::Asterisk),
+            '/' => Some(Token::Slash),
+            '%' => Some(Token::Percent),
+            '?' => Some(Token::Question),
+            '(' => Some(Token::LeftParen),
+            ')' => Some(Token::RightParen),
+            ',' => Some(Token::Comma),
+            ';' => Some(Token::Semicolon),
+            '!' => {
+                self.iter.next();
+                self.iter
+                    .peek()
+                    .filter(|(_, c)| *c == '=')
+                    .map(|_| Token::NotEqual)
+            }
+            _ => None,
+        };
+
+        self.iter.next_if(|(_, _)| symbol.is_some());
+
+        symbol.map(|symbol| match symbol {
+            Token::LessThan => match self.iter.next_if(|&(_, c)| c == '>' || c == '=') {
+                Some((_, '>')) => Token::LessOrGreaterThan,
+                Some((_, '=')) => Token::LessThanOrEqual,
+                _ => symbol,
+            },
+            Token::GreaterThan => match self.iter.next_if(|&(_, c)| c == '=') {
+                Some(_) => Token::GreaterThanOrEqual,
+                _ => symbol,
+            },
+            _ => symbol,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test(input: &str, expected_output: &[Option<Result<Token>>]) {
+        let mut lexer = Lexer::new(&input);
+
+        expected_output
+            .iter()
+            .for_each(|output| assert_eq!(*output, lexer.next()));
+    }
 
     #[test]
     fn scan_string() {
@@ -123,19 +174,20 @@ mod tests {
             .iter()
             .map(|&s| Some(Ok(Token::String(s))))
             .collect::<Vec<_>>();
-        let mut lexer = Lexer::new(&input);
 
-        expected_output
-            .iter()
-            .for_each(|output| assert_eq!(*output, lexer.next()));
+        test(&input, &expected_output);
     }
 
     #[test]
     fn scan_string_error() {
         let input = "'abc";
-        let mut lexer = Lexer::new(input);
+        let expected_output = [Some(Err(Error::new(
+            input,
+            3,
+            Details::NoClosingQuoteForString,
+        )))];
 
-        assert!(matches!(lexer.next(), Some(Err(_))));
+        test(input, &expected_output);
     }
 
     #[test]
@@ -147,15 +199,11 @@ mod tests {
             .map(|&s| Some(Ok(Token::Number(s))))
             .collect::<Vec<_>>();
 
-        let mut lexer = Lexer::new(&input);
-
-        expected_output
-            .iter()
-            .for_each(|output| assert_eq!(*output, lexer.next()));
+        test(&input, &expected_output);
     }
 
     #[test]
-    fn scan_ident() {
+    fn scan_identifier() {
         let input = "SELECT abc FROM def";
         let expected_output = [
             Some(Ok(Token::Keyword(Keyword::Select))),
@@ -164,10 +212,20 @@ mod tests {
             Some(Ok(Token::Identifier("def"))),
         ];
 
-        let mut lexer = Lexer::new(&input);
+        test(input, &expected_output);
+    }
 
-        expected_output
-            .iter()
-            .for_each(|token| assert_eq!(*token, lexer.next()));
+    #[test]
+    fn scan_symbol() {
+        let input = "* != < >= <>";
+        let expected_output = [
+            Some(Ok(Token::Asterisk)),
+            Some(Ok(Token::NotEqual)),
+            Some(Ok(Token::LessThan)),
+            Some(Ok(Token::GreaterThanOrEqual)),
+            Some(Ok(Token::LessOrGreaterThan)),
+        ];
+
+        test(input, &expected_output);
     }
 }

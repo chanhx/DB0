@@ -12,6 +12,7 @@ pub(super) enum Token<'a> {
     Semicolon,
     LeftParen,
     RightParen,
+    Question,
 
     Equal,
     NotEqual,
