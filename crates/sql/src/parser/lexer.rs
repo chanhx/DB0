@@ -43,7 +43,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn iter_next_while(&mut self, func: impl Fn(&char) -> bool) {
-        while let Some(_) = self.iter.next_if(|(_, c)| func(c)) {}
+        while self.iter.next_if(|(_, c)| func(c)).is_some() {}
     }
 
     fn iter_offset(&mut self) -> usize {
@@ -83,12 +83,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan_number(&mut self) -> Option<Token<'a>> {
-        let begin = self.iter.next_if(|&(_, c)| c.is_digit(10));
-        if begin.is_none() {
-            return None;
-        }
-
-        let begin = begin.unwrap().0;
+        let begin = self.iter.next_if(|&(_, c)| c.is_digit(10))?.0;
 
         self.iter_next_while(|c| c.is_digit(10));
         self.iter.next_if(|&(_, c)| c == '.');
@@ -103,12 +98,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan_identifier(&mut self) -> Option<Token<'a>> {
-        let begin = self.iter.next_if(|&(_, c)| c.is_alphabetic());
-        if begin.is_none() {
-            return None;
-        }
+        let begin = self.iter.next_if(|&(_, c)| c.is_alphabetic())?.0;
 
-        let begin = begin.unwrap().0;
         self.iter_next_while(|&c| c.is_alphanumeric() || c == '_');
         let end = self.iter_offset();
 
