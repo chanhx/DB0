@@ -1,5 +1,8 @@
+mod token;
+
+pub(crate) use token::{Keyword, Token};
+
 use {
-    super::token::{Keyword, Token},
     crate::error::{Details, Error, Result},
     std::{iter::Peekable, str::CharIndices},
 };

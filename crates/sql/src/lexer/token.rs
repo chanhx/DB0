@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
-pub(super) enum Token<'a> {
+pub(crate) enum Token<'a> {
     Keyword(Keyword),
 
     Identifier(&'a str),
@@ -30,7 +30,7 @@ pub(super) enum Token<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub(super) enum Keyword {
+pub(crate) enum Keyword {
     And,
     Asc,
     Begin,
