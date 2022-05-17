@@ -183,19 +183,18 @@ impl<'a> Lexer<'a> {
 mod tests {
     use {super::*, std::iter::zip};
 
-    fn test(input: &str, expected_output: &[Option<Result<(Token, Span)>>]) {
-        let mut lexer = Lexer::new(&input);
+    fn test(input: &str, expected_output: &[Result<(Token, Span)>]) {
+        let lexer = Lexer::new(&input);
+        let output = lexer.collect::<Vec<_>>();
 
-        expected_output
-            .iter()
-            .for_each(|output| assert_eq!(*output, lexer.next()));
+        assert_eq!(output, expected_output);
     }
 
     fn construct_expected_output(
         input: &str,
         strs: Vec<&str>,
         tokens: Vec<Token>,
-    ) -> Vec<Option<Result<(Token, Span)>>> {
+    ) -> Vec<Result<(Token, Span)>> {
         assert_eq!(strs.len(), tokens.len());
 
         zip(strs, tokens)
@@ -204,13 +203,13 @@ mod tests {
                 let begin = input.find(s).unwrap();
                 let range = begin..=begin + s.len() - 1;
 
-                Some(Ok((token, range)))
+                Ok((token, range))
             })
             .collect::<Vec<_>>()
     }
 
-    fn make_test(strs: Vec<&str>, tokens: Vec<Token>) {
-        let input = strs.join(" ");
+    fn make_test(input: &str, tokens: Vec<Token>) {
+        let strs = input.split_whitespace().collect();
         let expected_output = construct_expected_output(&input, strs, tokens);
 
         test(&input, &expected_output);
@@ -218,35 +217,31 @@ mod tests {
 
     #[test]
     fn scan_string() {
-        let strs = vec!["'abc''DEF'", "'ABC*DEF'"];
+        let input = " 'abc''DEF'  'ABC*DEF'  ";
         let tokens = vec![Token::String, Token::String];
 
-        make_test(strs, tokens);
+        make_test(input, tokens);
     }
 
     #[test]
     fn scan_string_error() {
         let input = "'abc";
-        let expected_output = [Some(Err(Error::new(
-            input,
-            3,
-            Details::NoClosingQuoteForString,
-        )))];
+        let expected_output = [Err(Error::new(input, 3, Details::NoClosingQuoteForString))];
 
         test(input, &expected_output);
     }
 
     #[test]
     fn scan_number() {
-        let strs = vec!["123.", "123.456e+789"];
+        let input = "123.  123.456e+789";
         let tokens = vec![Token::Number, Token::Number];
 
-        make_test(strs, tokens);
+        make_test(input, tokens);
     }
 
     #[test]
     fn scan_identifier() {
-        let strs = vec!["SELECT", "abc", "FROM", "def"];
+        let input = " SELECT abc FROM def";
         let tokens = vec![
             Token::Keyword(Keyword::SELECT),
             Token::Identifier,
@@ -254,12 +249,12 @@ mod tests {
             Token::Identifier,
         ];
 
-        make_test(strs, tokens);
+        make_test(input, tokens);
     }
 
     #[test]
     fn scan_symbol() {
-        let strs = vec!["*", "!=", "<", ">=", "<>"];
+        let input = "* != < >= <>";
         let tokens = vec![
             Token::Asterisk,
             Token::NotEqual,
@@ -268,6 +263,6 @@ mod tests {
             Token::LessOrGreaterThan,
         ];
 
-        make_test(strs, tokens);
+        make_test(input, tokens);
     }
 }
