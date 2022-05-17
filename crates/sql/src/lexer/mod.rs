@@ -4,7 +4,10 @@ pub(crate) use token::{Keyword, Token};
 
 use {
     crate::error::{Details, Error, Result},
-    std::{iter::Peekable, str::CharIndices},
+    std::{
+        iter::Peekable,
+        str::{CharIndices, FromStr},
+    },
 };
 
 pub(super) struct Lexer<'a> {
@@ -112,6 +115,7 @@ impl<'a> Lexer<'a> {
 
         Keyword::from_str(ident)
             .map(Token::Keyword)
+            .ok()
             .or_else(|| Some(Token::Identifier(ident)))
     }
 
@@ -210,9 +214,9 @@ mod tests {
     fn scan_identifier() {
         let input = "SELECT abc FROM def";
         let expected_output = [
-            Some(Ok(Token::Keyword(Keyword::Select))),
+            Some(Ok(Token::Keyword(Keyword::SELECT))),
             Some(Ok(Token::Identifier("abc"))),
-            Some(Ok(Token::Keyword(Keyword::From))),
+            Some(Ok(Token::Keyword(Keyword::FROM))),
             Some(Ok(Token::Identifier("def"))),
         ];
 

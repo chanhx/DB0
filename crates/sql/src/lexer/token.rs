@@ -29,72 +29,68 @@ pub(crate) enum Token<'a> {
     Percent,
 }
 
-#[derive(Debug, PartialEq)]
-pub(crate) enum Keyword {
-    And,
-    Asc,
-    Begin,
-    By,
-    Commit,
-    Create,
-    Database,
-    Desc,
-    From,
-    In,
-    Index,
-    Inner,
-    Insert,
-    Into,
-    Is,
-    Join,
-    Key,
-    Left,
-    Limit,
-    On,
-    Or,
-    Order,
-    Right,
-    Rollback,
-    Select,
-    Table,
-    Update,
-    Values,
-    Where,
+macro_rules! keyword {
+    ( $( $var:ident, )* ) => {
+        #[derive(Debug, PartialEq)]
+        #[allow(non_camel_case_types)]
+        pub(crate) enum Keyword {
+            $($var,)*
+        }
+
+        #[derive(Debug)]
+        pub(crate) struct NotKeywordError {}
+
+        impl std::fmt::Display for NotKeywordError {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "not a keyword")
+            }
+        }
+        impl std::error::Error for NotKeywordError {}
+
+        impl std::str::FromStr for Keyword {
+            type Err = NotKeywordError;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s.to_ascii_uppercase().as_str() {
+                    $(stringify!($var) => Ok(Self::$var),)*
+                    _=> Err(NotKeywordError{}),
+                }
+            }
+        }
+    };
 }
 
-impl Keyword {
-    pub(super) fn from_str(s: &str) -> Option<Self> {
-        Some(match s.to_ascii_uppercase().as_str() {
-            "AND" => Self::And,
-            "ASC" => Self::Asc,
-            "BEGIN" => Self::Begin,
-            "BY" => Self::By,
-            "COMMIT" => Self::Commit,
-            "CREATE" => Self::Create,
-            "DATABASE" => Self::Database,
-            "DESC" => Self::Desc,
-            "FROM" => Self::From,
-            "IN" => Self::In,
-            "INDEX" => Self::Index,
-            "INNER" => Self::Inner,
-            "INSERT" => Self::Insert,
-            "INTO" => Self::Into,
-            "IS" => Self::Is,
-            "JOIN" => Self::Join,
-            "KEY" => Self::Key,
-            "LEFT" => Self::Left,
-            "LIMIT" => Self::Limit,
-            "ON" => Self::On,
-            "OR" => Self::Or,
-            "ORDER" => Self::Order,
-            "RIGHT" => Self::Right,
-            "ROLLBACK" => Self::Rollback,
-            "SELECT" => Self::Select,
-            "TABLE" => Self::Table,
-            "UPDATE" => Self::Update,
-            "VALUES" => Self::Values,
-            "WHERE" => Self::Where,
-            _ => return None,
-        })
-    }
+keyword! {
+    AND,
+    ASC,
+    BEGIN,
+    BY,
+    COMMIT,
+    CREATE,
+    DATABASE,
+    DESC,
+    EXISTS,
+    FROM,
+    IF,
+    IN,
+    INDEX,
+    INNER,
+    INSERT,
+    INTO,
+    IS,
+    JOIN,
+    KEY,
+    LEFT,
+    LIMIT,
+    ON,
+    OR,
+    ORDER,
+    NOT,
+    RIGHT,
+    ROLLBACK,
+    SELECT,
+    TABLE,
+    UPDATE,
+    VALUES,
+    WHERE,
 }
