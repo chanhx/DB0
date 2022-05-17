@@ -1,11 +1,13 @@
+use std::ops::RangeInclusive;
+
 #[derive(Debug, PartialEq)]
-pub(crate) enum Token<'a> {
+pub(crate) enum Token {
     Keyword(Keyword),
 
-    Identifier(&'a str),
+    Identifier,
 
-    Number(&'a str),
-    String(&'a str),
+    Number,
+    String,
 
     Comma,
     Period,
@@ -28,6 +30,8 @@ pub(crate) enum Token<'a> {
     Slash,
     Percent,
 }
+
+pub(crate) type Span = RangeInclusive<usize>;
 
 macro_rules! keyword {
     ( $( $var:ident, )* ) => {

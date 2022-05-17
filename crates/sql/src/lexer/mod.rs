@@ -1,6 +1,6 @@
 mod token;
 
-pub(crate) use token::{Keyword, Token};
+pub(crate) use token::{Keyword, Span, Token};
 
 use {
     crate::error::{Details, Error, Result},
@@ -16,7 +16,7 @@ pub(super) struct Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token<'a>>;
+    type Item = Result<(Token, Span)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // consume whitespace
@@ -61,7 +61,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn scan_string(&mut self) -> Result<Option<Token<'a>>> {
+    fn scan_string(&mut self) -> Result<Option<(Token, Span)>> {
         let begin = self.iter.next_if(|&(_, c)| c == '\'');
         if begin.is_none() {
             return Ok(None);
@@ -75,8 +75,7 @@ impl<'a> Lexer<'a> {
                     // check if it escapes a single quote
                     Some((_, '\'')) => _ = self.iter.next(),
                     _ => {
-                        // TODO: deal with escaping
-                        return Ok(Some(Token::String(&self.src[begin..=i])));
+                        return Ok(Some((Token::String, begin..=i)));
                     }
                 },
                 _ => {}
@@ -90,7 +89,7 @@ impl<'a> Lexer<'a> {
         ))
     }
 
-    fn scan_number(&mut self) -> Option<Token<'a>> {
+    fn scan_number(&mut self) -> Option<(Token, Span)> {
         let begin = self.iter.next_if(|&(_, c)| c.is_digit(10))?.0;
 
         self.iter_next_while(|c| c.is_digit(10));
@@ -102,29 +101,53 @@ impl<'a> Lexer<'a> {
 
         let end = self.iter_offset();
 
-        Some(Token::Number(&self.src[begin..=end]))
+        Some((Token::Number, begin..=end))
     }
 
-    fn scan_identifier(&mut self) -> Option<Token<'a>> {
+    fn scan_identifier(&mut self) -> Option<(Token, Span)> {
         let begin = self.iter.next_if(|&(_, c)| c.is_alphabetic())?.0;
 
         self.iter_next_while(|&c| c.is_alphanumeric() || c == '_');
         let end = self.iter_offset();
 
-        let ident = &self.src[begin..=end];
+        let range = begin..=end;
+        let ident = &self.src[range.clone()];
 
         Keyword::from_str(ident)
             .map(Token::Keyword)
+            .map(|token| (token, range.clone()))
             .ok()
-            .or_else(|| Some(Token::Identifier(ident)))
+            .or_else(|| Some((Token::Identifier, range.clone())))
     }
 
-    fn scan_symbol(&mut self) -> Option<Token<'a>> {
-        let symbol = match self.iter.peek()?.1 {
+    fn scan_symbol(&mut self) -> Option<(Token, Span)> {
+        let &(begin, next_char) = self.iter.peek()?;
+
+        let mut iter_should_next = true;
+        let symbol = match next_char {
             '.' => Some(Token::Period),
             '=' => Some(Token::Equal),
-            '>' => Some(Token::GreaterThan),
-            '<' => Some(Token::LessThan),
+            '<' => {
+                self.iter.next();
+                match self.iter.peek() {
+                    Some((_, '>')) => Some(Token::LessOrGreaterThan),
+                    Some((_, '=')) => Some(Token::LessThanOrEqual),
+                    _ => {
+                        iter_should_next = false;
+                        Some(Token::LessThan)
+                    }
+                }
+            }
+            '>' => {
+                self.iter.next();
+                match self.iter.peek() {
+                    Some((_, '=')) => Some(Token::GreaterThanOrEqual),
+                    _ => {
+                        iter_should_next = false;
+                        Some(Token::GreaterThan)
+                    }
+                }
+            }
             '+' => Some(Token::Plus),
             '-' => Some(Token::Minus),
             '*' => Some(Token::Asterisk),
@@ -142,31 +165,25 @@ impl<'a> Lexer<'a> {
                     .filter(|(_, c)| *c == '=')
                     .map(|_| Token::NotEqual)
             }
-            _ => None,
+            _ => {
+                iter_should_next = false;
+                None
+            }
         };
 
-        self.iter.next_if(|(_, _)| symbol.is_some());
+        if iter_should_next {
+            self.iter.next();
+        }
 
-        symbol.map(|symbol| match symbol {
-            Token::LessThan => match self.iter.next_if(|&(_, c)| c == '>' || c == '=') {
-                Some((_, '>')) => Token::LessOrGreaterThan,
-                Some((_, '=')) => Token::LessThanOrEqual,
-                _ => symbol,
-            },
-            Token::GreaterThan => match self.iter.next_if(|&(_, c)| c == '=') {
-                Some(_) => Token::GreaterThanOrEqual,
-                _ => symbol,
-            },
-            _ => symbol,
-        })
+        symbol.map(|symbol| (symbol, begin..=self.iter_offset()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {super::*, std::iter::zip};
 
-    fn test(input: &str, expected_output: &[Option<Result<Token>>]) {
+    fn test(input: &str, expected_output: &[Option<Result<(Token, Span)>>]) {
         let mut lexer = Lexer::new(&input);
 
         expected_output
@@ -174,16 +191,37 @@ mod tests {
             .for_each(|output| assert_eq!(*output, lexer.next()));
     }
 
-    #[test]
-    fn scan_string() {
-        let strs = ["'abc''DEF'", "'ABC*DEF'"];
+    fn construct_expected_output(
+        input: &str,
+        strs: Vec<&str>,
+        tokens: Vec<Token>,
+    ) -> Vec<Option<Result<(Token, Span)>>> {
+        assert_eq!(strs.len(), tokens.len());
+
+        zip(strs, tokens)
+            .into_iter()
+            .map(|(s, token)| {
+                let begin = input.find(s).unwrap();
+                let range = begin..=begin + s.len() - 1;
+
+                Some(Ok((token, range)))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn make_test(strs: Vec<&str>, tokens: Vec<Token>) {
         let input = strs.join(" ");
-        let expected_output = strs
-            .iter()
-            .map(|&s| Some(Ok(Token::String(s))))
-            .collect::<Vec<_>>();
+        let expected_output = construct_expected_output(&input, strs, tokens);
 
         test(&input, &expected_output);
+    }
+
+    #[test]
+    fn scan_string() {
+        let strs = vec!["'abc''DEF'", "'ABC*DEF'"];
+        let tokens = vec![Token::String, Token::String];
+
+        make_test(strs, tokens);
     }
 
     #[test]
@@ -200,40 +238,36 @@ mod tests {
 
     #[test]
     fn scan_number() {
-        let nums = ["123.", "123.456e+789"];
-        let input = nums.join(" ");
-        let expected_output = nums
-            .iter()
-            .map(|&s| Some(Ok(Token::Number(s))))
-            .collect::<Vec<_>>();
+        let strs = vec!["123.", "123.456e+789"];
+        let tokens = vec![Token::Number, Token::Number];
 
-        test(&input, &expected_output);
+        make_test(strs, tokens);
     }
 
     #[test]
     fn scan_identifier() {
-        let input = "SELECT abc FROM def";
-        let expected_output = [
-            Some(Ok(Token::Keyword(Keyword::SELECT))),
-            Some(Ok(Token::Identifier("abc"))),
-            Some(Ok(Token::Keyword(Keyword::FROM))),
-            Some(Ok(Token::Identifier("def"))),
+        let strs = vec!["SELECT", "abc", "FROM", "def"];
+        let tokens = vec![
+            Token::Keyword(Keyword::SELECT),
+            Token::Identifier,
+            Token::Keyword(Keyword::FROM),
+            Token::Identifier,
         ];
 
-        test(input, &expected_output);
+        make_test(strs, tokens);
     }
 
     #[test]
     fn scan_symbol() {
-        let input = "* != < >= <>";
-        let expected_output = [
-            Some(Ok(Token::Asterisk)),
-            Some(Ok(Token::NotEqual)),
-            Some(Ok(Token::LessThan)),
-            Some(Ok(Token::GreaterThanOrEqual)),
-            Some(Ok(Token::LessOrGreaterThan)),
+        let strs = vec!["*", "!=", "<", ">=", "<>"];
+        let tokens = vec![
+            Token::Asterisk,
+            Token::NotEqual,
+            Token::LessThan,
+            Token::GreaterThanOrEqual,
+            Token::LessOrGreaterThan,
         ];
 
-        test(input, &expected_output);
+        make_test(strs, tokens);
     }
 }
