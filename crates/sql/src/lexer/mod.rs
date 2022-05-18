@@ -70,15 +70,16 @@ impl<'a> Lexer<'a> {
         let begin = begin.unwrap().0;
 
         while let Some((i, c)) = self.iter.next() {
-            match c {
-                '\'' => match self.iter.peek() {
-                    // check if it escapes a single quote
-                    Some((_, '\'')) => _ = self.iter.next(),
-                    _ => {
-                        return Ok(Some((Token::String, begin..=i)));
-                    }
-                },
-                _ => {}
+            if c != '\'' {
+                continue;
+            }
+
+            match self.iter.peek() {
+                // check if it escapes a single quote
+                Some((_, '\'')) => _ = self.iter.next(),
+                _ => {
+                    return Ok(Some((Token::String, begin..=i)));
+                }
             }
         }
 
@@ -99,18 +100,15 @@ impl<'a> Lexer<'a> {
         self.iter.next_if(|&(_, c)| c == '+' || c == '-');
         self.iter_next_while(|c| c.is_digit(10));
 
-        let end = self.iter_offset();
-
-        Some((Token::Number, begin..=end))
+        Some((Token::Number, begin..=self.iter_offset()))
     }
 
     fn scan_identifier(&mut self) -> Option<(Token, Span)> {
         let begin = self.iter.next_if(|&(_, c)| c.is_alphabetic())?.0;
 
         self.iter_next_while(|&c| c.is_alphanumeric() || c == '_');
-        let end = self.iter_offset();
 
-        let range = begin..=end;
+        let range = begin..=self.iter_offset();
         let ident = &self.src[range.clone()];
 
         Keyword::from_str(ident)
