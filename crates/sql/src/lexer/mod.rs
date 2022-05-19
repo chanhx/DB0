@@ -1,9 +1,12 @@
 mod token;
 
-pub(crate) use token::{Keyword, Span, Token};
+pub(crate) use token::{Keyword, Token};
 
 use {
-    crate::error::{Details, Error, Result},
+    crate::{
+        error::{Details, Error, Result},
+        Span,
+    },
     std::{
         iter::Peekable,
         str::{CharIndices, FromStr},
@@ -35,7 +38,7 @@ impl<'a> Iterator for Lexer<'a> {
             Ok(None) => self
                 .iter
                 .peek()
-                .map(|&(i, c)| Err(Error::new(self.src, i, Details::UnexpectedChar(c)))),
+                .map(|&(i, c)| Err(Error::new(i..=i, Details::UnexpectedChar(c)))),
             Err(err) => Some(Err(err)),
         }
     }
@@ -84,8 +87,7 @@ impl<'a> Lexer<'a> {
         }
 
         Err(Error::new(
-            self.src,
-            self.src.len() - 1,
+            begin..=self.src.len() - 1,
             Details::NoClosingQuoteForString,
         ))
     }
@@ -224,7 +226,7 @@ mod tests {
     #[test]
     fn scan_string_error() {
         let input = "'abc";
-        let expected_output = [Err(Error::new(input, 3, Details::NoClosingQuoteForString))];
+        let expected_output = [Err(Error::new(0..=3, Details::NoClosingQuoteForString))];
 
         test(input, &expected_output);
     }

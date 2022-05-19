@@ -2,6 +2,10 @@ mod error;
 mod lexer;
 mod parser;
 
+use std::ops::RangeInclusive;
+
+pub type Span = RangeInclusive<usize>;
+
 #[cfg(test)]
 mod tests {
     #[test]

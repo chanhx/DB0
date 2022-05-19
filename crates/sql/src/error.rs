@@ -1,11 +1,10 @@
-use std::fmt::Display;
+use {crate::Span, std::fmt::Display};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq)]
 pub struct Error {
-    line: usize,
-    column: usize,
+    span: Span,
     details: Details,
 }
 
@@ -13,24 +12,13 @@ impl std::error::Error for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{} [Ln {}, Col {}]",
-            self.details, self.line, self.column
-        )
+        write!(f, "{}", self.details)
     }
 }
 
 impl Error {
-    pub(crate) fn new(src: &str, location: usize, details: Details) -> Self {
-        let (first, _) = src.split_at(location);
-        let start_of_line = first.rfind('\n').unwrap_or(0);
-
-        Self {
-            line: first.matches('\n').count() + 1,
-            column: location - start_of_line + 1,
-            details,
-        }
+    pub(crate) fn new(span: Span, details: Details) -> Self {
+        Self { span, details }
     }
 }
 
