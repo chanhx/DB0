@@ -4,8 +4,8 @@ pub(crate) use token::{Keyword, Token};
 
 use {
     crate::{
+        common::Span,
         error::{Error, Result},
-        Span,
     },
     std::{
         iter::Peekable,

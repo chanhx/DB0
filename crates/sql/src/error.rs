@@ -1,4 +1,4 @@
-use {crate::Span, std::fmt::Display};
+use {crate::common::Span, std::fmt::Display};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
