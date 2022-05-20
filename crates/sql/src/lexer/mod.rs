@@ -4,7 +4,7 @@ pub(crate) use token::{Keyword, Token};
 
 use {
     crate::{
-        error::{Details, Error, Result},
+        error::{Error, Result},
         Span,
     },
     std::{
@@ -38,7 +38,7 @@ impl<'a> Iterator for Lexer<'a> {
             Ok(None) => self
                 .iter
                 .peek()
-                .map(|&(i, c)| Err(Error::new(i..=i, Details::UnexpectedChar(c)))),
+                .map(|&(i, c)| Err(Error::UnexpectedChar { c, location: i })),
             Err(err) => Some(Err(err)),
         }
     }
@@ -86,10 +86,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        Err(Error::new(
-            begin..=self.src.len() - 1,
-            Details::NoClosingQuoteForString,
-        ))
+        Err(Error::NoClosingQuoteForString(begin..=self.src.len() - 1))
     }
 
     fn scan_number(&mut self) -> Option<(Token, Span)> {
@@ -226,7 +223,7 @@ mod tests {
     #[test]
     fn scan_string_error() {
         let input = "'abc";
-        let expected_output = [Err(Error::new(0..=3, Details::NoClosingQuoteForString))];
+        let expected_output = [Err(Error::NoClosingQuoteForString(0..=3))];
 
         test(input, &expected_output);
     }
