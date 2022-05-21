@@ -6,6 +6,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     UnexpectedChar { c: char, location: usize },
     NoClosingQuoteForString(Span),
+    UnexpectedEnd,
+    SyntaxError(Span),
 }
 
 impl std::error::Error for Error {}
@@ -18,6 +20,8 @@ impl Display for Error {
             match self {
                 Self::NoClosingQuoteForString(_) => "no closing quote for string".to_string(),
                 Self::UnexpectedChar { c, .. } => format!("unexpected char: {}", c),
+                Self::UnexpectedEnd => "unexpected end of input".to_string(),
+                Self::SyntaxError(_) => "syntax error".to_string(),
             }
         )
     }
