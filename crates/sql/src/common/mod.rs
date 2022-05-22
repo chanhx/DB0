@@ -1,5 +1,3 @@
 pub(crate) mod iter;
 
-use std::ops::RangeInclusive;
-
-pub type Span = RangeInclusive<usize>;
+pub type Span = std::ops::RangeInclusive<usize>;

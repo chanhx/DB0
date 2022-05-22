@@ -4,8 +4,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    UnexpectedChar { c: char, location: usize },
     NoClosingQuoteForString(Span),
+    UnexpectedChar { c: char, location: usize },
     UnexpectedEnd,
     SyntaxError(Span),
 }
