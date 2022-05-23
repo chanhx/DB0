@@ -15,6 +15,11 @@ impl<'a> Parser<'a> {
         match_token!(self.tokens.next(), {
             (Token::Keyword(Keyword::DATABASE), _) => self.parse_create_database(),
             (Token::Keyword(Keyword::TABLE), _) => self.parse_create_table(),
+            (Token::Keyword(Keyword::INDEX), _) => self.parse_create_index(false),
+            (Token::Keyword(Keyword::UNIQUE), _) => {
+                self.must_match(Token::Keyword(Keyword::INDEX))?;
+                self.parse_create_index(true)
+            },
         })
     }
 
@@ -134,5 +139,21 @@ impl<'a> Parser<'a> {
         }
 
         Ok(constraints)
+    }
+
+    pub(super) fn parse_create_index(&mut self, is_unique: bool) -> Result<Stmt> {
+        let name = self.parse_identifier()?;
+
+        self.must_match(Token::Keyword(Keyword::ON))?;
+
+        let table = self.parse_identifier()?;
+        let columns = self.parse_identifiers_within_parentheses()?;
+
+        Ok(Stmt::CreateIndex {
+            is_unique,
+            name,
+            table,
+            columns,
+        })
     }
 }

@@ -12,6 +12,12 @@ pub enum Stmt {
         if_not_exists: bool,
         name: Identifier,
     },
+    CreateIndex {
+        is_unique: bool,
+        name: Identifier,
+        table: Identifier,
+        columns: Vec<Identifier>,
+    },
     CreateTable {
         if_not_exists: bool,
         name: Identifier,

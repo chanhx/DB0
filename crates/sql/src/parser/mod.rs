@@ -74,6 +74,9 @@ mod tests {
             DROP DATABASE abc;
 
             DROP TABLE a123;
+
+            CREATE INDEX hi on abc (a, b);
+            CREATE unique INDEX hello on abc (a);
         ";
 
         let expected_output: Vec<Result<_>> = vec![
@@ -109,6 +112,18 @@ mod tests {
             }),
             Ok(Stmt::DropTable {
                 name: identifier_from_str("a123"),
+            }),
+            Ok(Stmt::CreateIndex {
+                is_unique: false,
+                name: identifier_from_str("hi"),
+                table: identifier_from_str("abc"),
+                columns: vec![identifier_from_str("a"), identifier_from_str("b")],
+            }),
+            Ok(Stmt::CreateIndex {
+                is_unique: true,
+                name: identifier_from_str("hello"),
+                table: identifier_from_str("abc"),
+                columns: vec![identifier_from_str("a")],
             }),
         ];
 
