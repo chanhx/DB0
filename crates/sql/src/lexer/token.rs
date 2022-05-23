@@ -74,6 +74,7 @@ keyword! {
     DATABASE,
     DECIMAL,
     DESC,
+    DROP,
     EXISTS,
     FLOAT,
     FROM,

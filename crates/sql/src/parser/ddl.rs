@@ -8,6 +8,25 @@ use {
 };
 
 impl<'a> Parser<'a> {
+    pub(super) fn parse_create(&mut self) -> Result<Stmt> {
+        // let or_replace = self.match_keyword_sequence(&[Keyword::OR, Keyword::REPLACE]);
+        // let is_temp = self.match_keyword_aliases(&[Keyword::TEMP, Keyword::TEMPORARY]);
+
+        match_token!(self.tokens.next(), {
+            (Token::Keyword(Keyword::DATABASE), _) => self.parse_create_database(),
+            (Token::Keyword(Keyword::TABLE), _) => self.parse_create_table(),
+        })
+    }
+
+    pub(super) fn parse_drop(&mut self) -> Result<Stmt> {
+        match_token!(self.tokens.next(), {
+            (Token::Keyword(Keyword::DATABASE), _) =>
+                Ok(Stmt::DropDatabase { name: self.parse_identifier()? }),
+            (Token::Keyword(Keyword::TABLE), _) =>
+                Ok(Stmt::DropTable { name: self.parse_identifier()? }),
+        })
+    }
+
     pub(super) fn parse_create_database(&mut self) -> Result<Stmt> {
         let if_not_exists =
             self.match_keyword_sequence(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);

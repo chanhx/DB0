@@ -1,14 +1,11 @@
 mod common;
 mod ddl;
 
-use {
-    crate::{
-        common::iter::{MultiPeek, MultiPeekable},
-        error::{Error, Result},
-        lexer::{Keyword, Lexer, Token},
-        stmt::Stmt,
-    },
-    common::match_token,
+use crate::{
+    common::iter::{MultiPeek, MultiPeekable},
+    error::{Error, Result},
+    lexer::{Keyword, Lexer, Token},
+    stmt::Stmt,
 };
 
 pub struct Parser<'a> {
@@ -43,18 +40,9 @@ impl<'a> Parser<'a> {
 
         Some(match self.tokens.next()? {
             Ok((Token::Keyword(Keyword::CREATE), _)) => self.parse_create(),
+            Ok((Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
             Ok((_, span)) => Err(Error::SyntaxError(span)),
             Err(e) => Err(e),
-        })
-    }
-
-    fn parse_create(&mut self) -> Result<Stmt> {
-        // let or_replace = self.match_keyword_sequence(&[Keyword::OR, Keyword::REPLACE]);
-        // let is_temp = self.match_keyword_aliases(&[Keyword::TEMP, Keyword::TEMPORARY]);
-
-        match_token!(self.tokens.next(), {
-            (Token::Keyword(Keyword::DATABASE), _) => self.parse_create_database(),
-            (Token::Keyword(Keyword::TABLE), _) => self.parse_create_table(),
         })
     }
 }
@@ -82,6 +70,10 @@ mod tests {
                 b varchar(15) Not null,
                 c integer unique
             );
+
+            DROP DATABASE abc;
+
+            DROP TABLE a123;
         ";
 
         let expected_output: Vec<Result<_>> = vec![
@@ -111,6 +103,12 @@ mod tests {
                 ],
                 constraints: vec![TableConstraint::PrimaryKey(vec![identifier_from_str("a")])],
                 from_query: None,
+            }),
+            Ok(Stmt::DropDatabase {
+                name: identifier_from_str("abc"),
+            }),
+            Ok(Stmt::DropTable {
+                name: identifier_from_str("a123"),
             }),
         ];
 

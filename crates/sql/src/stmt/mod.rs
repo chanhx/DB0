@@ -19,4 +19,10 @@ pub enum Stmt {
         constraints: Vec<TableConstraint>,
         from_query: Option<Box<Select>>,
     },
+    DropDatabase {
+        name: Identifier,
+    },
+    DropTable {
+        name: Identifier,
+    },
 }
