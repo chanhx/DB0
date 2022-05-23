@@ -4,13 +4,13 @@ use {
         common::Span,
         error::{Error, Result},
         lexer::{Keyword, Token},
-        stmt::DataType,
+        stmt::{DataType, Identifier},
     },
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn ident_from_span(&self, span: Span) -> String {
-        self.src[span].to_string()
+    pub(super) fn identifier_from_span(&self, span: Span) -> Identifier {
+        Identifier(self.src[span.clone()].to_string(), span.clone())
     }
 
     pub(super) fn string_from_span(&self, span: Span) -> String {
@@ -60,6 +60,29 @@ impl<'a> Parser<'a> {
         })
     }
 
+    pub(super) fn parse_identifier(&mut self) -> Result<Identifier> {
+        match_token!(self.tokens.next(), {
+            (Token::Identifier, span) => Ok(self.identifier_from_span(span)),
+        })
+    }
+
+    pub(super) fn parse_identifiers_within_parentheses(&mut self) -> Result<Vec<Identifier>> {
+        let mut identifiers = Vec::new();
+
+        self.must_match(Token::LeftParen)?;
+        loop {
+            let identifier = self.parse_identifier()?;
+            identifiers.push(identifier);
+
+            match_token!(self.tokens.next(), {
+                (Token::Comma, _) => {},
+                (Token::RightParen, _) => break,
+            });
+        }
+
+        Ok(identifiers)
+    }
+
     pub(super) fn parse_data_type(&mut self) -> Result<DataType> {
         match_token!(self.tokens.next(), {
             (Token::Keyword(Keyword::BOOLEAN), _) => Ok(DataType::Boolean),
@@ -78,7 +101,7 @@ impl<'a> Parser<'a> {
 
                 Ok(DataType::Char(len as u32))
             },
-            (Token::Keyword(Keyword::VCHAR), _) => {
+            (Token::Keyword(Keyword::VARCHAR), _) => {
                 self.must_match(Token::LeftParen)?;
                 let (_, span) = self.must_match(Token::Number)?;
                 self.must_match(Token::RightParen)?;

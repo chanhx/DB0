@@ -92,6 +92,7 @@ keyword! {
     LIMIT,
     NOT,
     NUMERIC,
+    NULL,
     ON,
     OR,
     ORDER,
@@ -104,8 +105,9 @@ keyword! {
     TABLE,
     TEMP,
     TEMPORARY,
+    UNIQUE,
     UPDATE,
     VALUES,
-    VCHAR,
+    VARCHAR,
     WHERE,
 }
