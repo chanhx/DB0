@@ -43,21 +43,21 @@ impl<'a> Parser<'a> {
             .is_some()
     }
 
-    pub(super) fn match_keyword_aliases(&mut self, aliases: &[Keyword]) -> bool {
-        self.tokens
-            .next_if(|item| match item {
-                Ok((Token::Keyword(keyword), _)) => aliases.iter().any(|alias| *alias == *keyword),
-                _ => false,
-            })
-            .is_some()
-    }
-
     pub(super) fn must_match(&mut self, token: Token) -> Result<(Token, Span)> {
         match_token!(self.tokens.next(), {
             (t, span) if t == token => {
                 Ok((t, span))
             },
         })
+    }
+
+    pub(super) fn try_match(&mut self, token: Token) -> Option<(Token, Span)> {
+        self.tokens
+            .next_if(|item| match item {
+                Ok((t, _)) => *t == token,
+                _ => false,
+            })
+            .map(|item| item.unwrap())
     }
 
     pub(super) fn parse_identifier(&mut self) -> Result<Identifier> {

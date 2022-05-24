@@ -61,15 +61,11 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_table_structure(&mut self) -> Result<(Vec<Column>, Vec<TableConstraint>)> {
-        if self
-            .tokens
-            .next_if(|token| matches!(*token, Ok((Token::LeftParen, _))))
-            .is_none()
-        {
+        if self.try_match(Token::LeftParen).is_none() {
             return Ok((vec![], vec![]));
         }
 
-        if matches!(self.tokens.peek(), Some(Ok((Token::RightParen, _)))) {
+        if self.try_match(Token::RightParen).is_some() {
             return Ok((vec![], vec![]));
         }
 
@@ -96,8 +92,8 @@ impl<'a> Parser<'a> {
                     table_constraints.push(TableConstraint::PrimaryKey(columns));
                 },
                 (Token::Keyword(Keyword::UNIQUE), _) => {
-                    let name = self.tokens.next_if(|item| matches!(*item, Ok((Token::Identifier, _)))).map(|item| {
-                        self.identifier_from_span(item.unwrap().1)
+                    let name = self.try_match(Token::Identifier).map(|item| {
+                        self.identifier_from_span(item.1)
                     });
                     let columns = self.parse_identifiers_within_parentheses()?;
 
