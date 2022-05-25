@@ -27,19 +27,18 @@ impl<'a> Iterator for Lexer<'a> {
 
         let token = match self.iter.peek() {
             Some((_, '\'')) => self.scan_string(),
-            Some((_, c)) if c.is_digit(10) => Ok(self.scan_number()),
-            Some((_, c)) if c.is_alphabetic() => Ok(self.scan_identifier()),
-            Some(_) => Ok(self.scan_symbol()),
-            _ => Ok(None),
+            Some((_, c)) if c.is_digit(10) => self.scan_number().map(|item| Ok(item)),
+            Some((_, c)) if c.is_alphabetic() => self.scan_identifier().map(|item| Ok(item)),
+            Some(_) => self.scan_symbol().map(|item| Ok(item)),
+            _ => None,
         };
 
         match token {
-            Ok(Some(token)) => Some(Ok(token)),
-            Ok(None) => self
+            None => self
                 .iter
                 .peek()
                 .map(|&(i, c)| Err(Error::UnexpectedChar { c, location: i })),
-            Err(err) => Some(Err(err)),
+            other => other,
         }
     }
 }
@@ -64,13 +63,8 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn scan_string(&mut self) -> Result<Option<(Token, Span)>> {
-        let begin = self.iter.next_if(|&(_, c)| c == '\'');
-        if begin.is_none() {
-            return Ok(None);
-        }
-
-        let begin = begin.unwrap().0;
+    fn scan_string(&mut self) -> Option<Result<(Token, Span)>> {
+        let begin = self.iter.next_if(|&(_, c)| c == '\'')?.0;
 
         while let Some((i, c)) = self.iter.next() {
             if c != '\'' {
@@ -81,25 +75,29 @@ impl<'a> Lexer<'a> {
                 // check if it escapes a single quote
                 Some((_, '\'')) => _ = self.iter.next(),
                 _ => {
-                    return Ok(Some((Token::String, begin..=i)));
+                    return Some(Ok((Token::String, begin..=i)));
                 }
             }
         }
 
-        Err(Error::NoClosingQuoteForString(begin..=self.src.len() - 1))
+        Some(Err(Error::NoClosingQuoteForString(
+            begin..=self.src.len() - 1,
+        )))
     }
 
     fn scan_number(&mut self) -> Option<(Token, Span)> {
         let begin = self.iter.next_if(|&(_, c)| c.is_digit(10))?.0;
 
         self.iter_next_while(|c| c.is_digit(10));
-        self.iter.next_if(|&(_, c)| c == '.');
+
+        let is_float = self.iter.next_if(|&(_, c)| c == '.').is_some();
+
         self.iter_next_while(|c| c.is_digit(10));
         self.iter.next_if(|&(_, c)| c == 'e' || c == 'E');
         self.iter.next_if(|&(_, c)| c == '+' || c == '-');
         self.iter_next_while(|c| c.is_digit(10));
 
-        Some((Token::Number, begin..=self.iter_offset()))
+        Some((Token::Number { is_float }, begin..=self.iter_offset()))
     }
 
     fn scan_identifier(&mut self) -> Option<(Token, Span)> {
@@ -230,8 +228,12 @@ mod tests {
 
     #[test]
     fn scan_number() {
-        let input = "123.  123.456e+789";
-        let tokens = vec![Token::Number, Token::Number];
+        let input = "12 123.  123.456e+789";
+        let tokens = vec![
+            Token::Number { is_float: false },
+            Token::Number { is_float: true },
+            Token::Number { is_float: true },
+        ];
 
         make_test(input, tokens);
     }

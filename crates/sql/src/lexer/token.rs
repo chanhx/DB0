@@ -4,7 +4,7 @@ pub(crate) enum Token {
 
     Identifier,
 
-    Number,
+    Number { is_float: bool },
     String,
 
     Comma,

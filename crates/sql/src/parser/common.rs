@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
             (Token::Keyword(Keyword::FLOAT), _) => Ok(DataType::Float),
             (Token::Keyword(Keyword::CHAR), _) => {
                 self.must_match(Token::LeftParen)?;
-                let (_, span) = self.must_match(Token::Number)?;
+                let (_, span) = self.must_match(Token::Number { is_float: false })?;
                 self.must_match(Token::RightParen)?;
 
                 let len = self.integer_from_span(span)?;
@@ -103,7 +103,7 @@ impl<'a> Parser<'a> {
             },
             (Token::Keyword(Keyword::VARCHAR), _) => {
                 self.must_match(Token::LeftParen)?;
-                let (_, span) = self.must_match(Token::Number)?;
+                let (_, span) = self.must_match(Token::Number { is_float: false })?;
                 self.must_match(Token::RightParen)?;
 
                 let len = self.integer_from_span(span)?;
