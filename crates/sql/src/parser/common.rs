@@ -6,6 +6,7 @@ use {
         lexer::{Keyword, Token},
         stmt::{DataType, Identifier},
     },
+    core::str::FromStr,
 };
 
 impl<'a> Parser<'a> {
@@ -20,9 +21,9 @@ impl<'a> Parser<'a> {
         self.src[start..=end].to_string().replace("''", "'")
     }
 
-    pub(super) fn integer_from_span(&self, span: Span) -> Result<isize> {
+    pub(super) fn number_from_span<T: FromStr>(&self, span: Span) -> Result<T> {
         self.src[span.clone()]
-            .parse()
+            .parse::<T>()
             .map_err(|_| Error::SyntaxError(span.clone()))
     }
 
@@ -66,21 +67,35 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_identifiers_within_parentheses(&mut self) -> Result<Vec<Identifier>> {
-        let mut identifiers = Vec::new();
-
+    pub(super) fn parse_comma_separated_within_parentheses<T, F>(
+        &mut self,
+        func: F,
+    ) -> Result<Vec<T>>
+    where
+        F: FnMut(&mut Parser<'a>) -> Result<T>,
+    {
         self.must_match(Token::LeftParen)?;
-        loop {
-            let identifier = self.parse_identifier()?;
-            identifiers.push(identifier);
+        let result = self.parse_comma_separated(func);
+        self.must_match(Token::RightParen)?;
 
-            match_token!(self.tokens.next(), {
-                (Token::Comma, _) => {},
-                (Token::RightParen, _) => break,
-            });
+        result
+    }
+
+    pub(super) fn parse_comma_separated<T, F>(&mut self, mut func: F) -> Result<Vec<T>>
+    where
+        F: FnMut(&mut Parser<'a>) -> Result<T>,
+    {
+        let mut v = vec![];
+
+        loop {
+            v.push(func(self)?);
+
+            if self.try_match(Token::Comma).is_none() {
+                break;
+            }
         }
 
-        Ok(identifiers)
+        Ok(v)
     }
 
     pub(super) fn parse_data_type(&mut self) -> Result<DataType> {
@@ -97,18 +112,18 @@ impl<'a> Parser<'a> {
                 let (_, span) = self.must_match(Token::Number { is_float: false })?;
                 self.must_match(Token::RightParen)?;
 
-                let len = self.integer_from_span(span)?;
+                let len = self.number_from_span(span)?;
 
-                Ok(DataType::Char(len as u32))
+                Ok(DataType::Char(len))
             },
             (Token::Keyword(Keyword::VARCHAR), _) => {
                 self.must_match(Token::LeftParen)?;
                 let (_, span) = self.must_match(Token::Number { is_float: false })?;
                 self.must_match(Token::RightParen)?;
 
-                let len = self.integer_from_span(span)?;
+                let len = self.number_from_span(span)?;
 
-                Ok(DataType::Varchar(len as u32))
+                Ok(DataType::Varchar(len))
             },
         })
     }

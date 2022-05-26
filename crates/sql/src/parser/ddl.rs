@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_create_database(&mut self) -> Result<Stmt> {
+    fn parse_create_database(&mut self) -> Result<Stmt> {
         let if_not_exists =
             self.match_keyword_sequence(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
 
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_create_table(&mut self) -> Result<Stmt> {
+    fn parse_create_table(&mut self) -> Result<Stmt> {
         let if_not_exists =
             self.match_keyword_sequence(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
 
@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_table_structure(&mut self) -> Result<(Vec<Column>, Vec<TableConstraint>)> {
+    fn parse_table_structure(&mut self) -> Result<(Vec<Column>, Vec<TableConstraint>)> {
         if self.try_match(Token::LeftParen).is_none() {
             return Ok((vec![], vec![]));
         }
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
                 },
                 (Token::Keyword(Keyword::PRIMARY), _) => {
                     self.must_match(Token::Keyword(Keyword::KEY))?;
-                    let columns = self.parse_identifiers_within_parentheses()?;
+                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier)?;
 
                     table_constraints.push(TableConstraint::PrimaryKey(columns));
                 },
@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
                     let name = self.try_match(Token::Identifier).map(|item| {
                         self.identifier_from_span(item.1)
                     });
-                    let columns = self.parse_identifiers_within_parentheses()?;
+                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier)?;
 
                     table_constraints.push(TableConstraint::Unique {
                         name,
@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
         Ok((columns, table_constraints))
     }
 
-    pub(super) fn parse_column_constraint(&mut self) -> Result<Vec<ColumnConstraint>> {
+    fn parse_column_constraint(&mut self) -> Result<Vec<ColumnConstraint>> {
         let mut constraints = Vec::new();
 
         while let Some(Ok((Token::Keyword(keyword), span))) = self
@@ -137,13 +137,13 @@ impl<'a> Parser<'a> {
         Ok(constraints)
     }
 
-    pub(super) fn parse_create_index(&mut self, is_unique: bool) -> Result<Stmt> {
+    fn parse_create_index(&mut self, is_unique: bool) -> Result<Stmt> {
         let name = self.parse_identifier()?;
 
         self.must_match(Token::Keyword(Keyword::ON))?;
 
         let table = self.parse_identifier()?;
-        let columns = self.parse_identifiers_within_parentheses()?;
+        let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier)?;
 
         Ok(Stmt::CreateIndex {
             is_unique,
