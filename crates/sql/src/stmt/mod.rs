@@ -1,10 +1,8 @@
 mod common;
 mod dml;
+mod expr;
 
-pub(crate) use {
-    common::{Column, ColumnConstraint, DataType, Identifier, TableConstraint},
-    dml::Select,
-};
+pub(crate) use {common::*, dml::*, expr::*};
 
 #[derive(Debug, PartialEq)]
 pub enum Stmt {

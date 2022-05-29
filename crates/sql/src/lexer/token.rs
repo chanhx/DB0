@@ -22,6 +22,7 @@ pub(crate) enum Token {
     LessThanOrEqual,
     LessOrGreaterThan,
 
+    Caret,
     Plus,
     Minus,
     Asterisk,
@@ -90,6 +91,7 @@ keyword! {
     JOIN,
     KEY,
     LEFT,
+    LIKE,
     LIMIT,
     NOT,
     NUMERIC,

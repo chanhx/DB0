@@ -148,6 +148,7 @@ impl<'a> Lexer<'a> {
             '*' => Some(Token::Asterisk),
             '/' => Some(Token::Slash),
             '%' => Some(Token::Percent),
+            '^' => Some(Token::Caret),
             '?' => Some(Token::Question),
             '(' => Some(Token::LeftParen),
             ')' => Some(Token::RightParen),

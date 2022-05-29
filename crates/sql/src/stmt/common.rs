@@ -1,4 +1,7 @@
-use crate::common::{macros, Span};
+use {
+    super::Expr,
+    crate::common::{macros, Span},
+};
 
 #[derive(Debug)]
 pub struct Identifier(pub String, pub Span);
@@ -42,15 +45,18 @@ pub enum TableConstraint {
     PrimaryKey(Vec<Identifier>),
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Expr {}
-
 macros::pub_fields_struct! {
     #[derive(Debug, PartialEq)]
     struct Column {
         name: Identifier,
         data_type: DataType,
         constraints: Vec<ColumnConstraint>,
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct ColumnIdentifier {
+        column: Identifier,
+        table: Option<Identifier>,
     }
 
     #[derive(Debug, PartialEq)]
