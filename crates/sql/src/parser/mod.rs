@@ -1,5 +1,6 @@
 mod common;
 mod ddl;
+mod expr;
 
 use crate::{
     common::iter::{MultiPeek, MultiPeekable},
