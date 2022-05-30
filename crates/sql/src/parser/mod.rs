@@ -1,6 +1,7 @@
 mod common;
 mod ddl;
 mod expr;
+mod query;
 
 use crate::{
     common::iter::{MultiPeek, MultiPeekable},
@@ -42,6 +43,9 @@ impl<'a> Parser<'a> {
         Some(match self.tokens.next()? {
             Ok((Token::Keyword(Keyword::CREATE), _)) => self.parse_create(),
             Ok((Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
+            Ok((Token::Keyword(Keyword::SELECT), _)) => {
+                self.parse_select().map(|select| Stmt::Select(select))
+            }
             Ok((_, span)) => Err(Error::SyntaxError(span)),
             Err(e) => Err(e),
         })
@@ -52,7 +56,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::{
-        error::{Error, Result},
+        error::Result,
         stmt::{Column, ColumnConstraint, DataType, Identifier, Stmt, TableConstraint},
     };
 

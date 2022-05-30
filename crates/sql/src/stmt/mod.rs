@@ -29,4 +29,5 @@ pub enum Stmt {
     DropTable {
         name: Identifier,
     },
+    Select(Select),
 }

@@ -6,7 +6,7 @@ use {
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    ColumnIdentifier(ColumnIdentifier),
+    Column(ColumnIdentifier),
     Literal(Literal),
     FunctionCall {
         func: Identifier,

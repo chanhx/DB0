@@ -52,12 +52,12 @@ impl<'a> Parser<'a> {
                     Some(Ok((Token::Period, _))) => {
                         self.tokens.next();
                         let column = self.parse_identifier()?;
-                        Expr::ColumnIdentifier(ColumnIdentifier {
+                        Expr::Column(ColumnIdentifier {
                             column,
                             table: Some(id),
                         })
                     },
-                    _ => Expr::ColumnIdentifier(ColumnIdentifier {
+                    _ => Expr::Column(ColumnIdentifier {
                         column: id,
                         table: None,
                     })
@@ -100,11 +100,11 @@ mod tests {
         let expected_output = Expr::Operation(Operation::GreaterThanOrEqual(
             Box::new(Expr::Operation(Operation::Add(
                 Box::new(Expr::Operation(Operation::Add(
-                    Box::from(Expr::ColumnIdentifier(ColumnIdentifier {
+                    Box::from(Expr::Column(ColumnIdentifier {
                         column: identifier_from_str("a"),
                         table: None,
                     })),
-                    Box::from(Expr::ColumnIdentifier(ColumnIdentifier {
+                    Box::from(Expr::Column(ColumnIdentifier {
                         column: identifier_from_str("c"),
                         table: Some(identifier_from_str("b")),
                     })),

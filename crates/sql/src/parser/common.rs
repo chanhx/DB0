@@ -67,6 +67,17 @@ impl<'a> Parser<'a> {
         })
     }
 
+    pub(super) fn parse_alias(&mut self) -> Result<Option<Identifier>> {
+        if self.try_match(Token::Keyword(Keyword::AS)).is_some() {
+            return Ok(Some(self.parse_identifier()?));
+        }
+
+        Ok(match self.try_match(Token::Identifier) {
+            Some((_, span)) => Some(self.identifier_from_span(span)),
+            None => None,
+        })
+    }
+
     pub(super) fn parse_comma_separated_within_parentheses<T, F>(
         &mut self,
         func: F,
