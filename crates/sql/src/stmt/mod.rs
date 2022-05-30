@@ -29,5 +29,10 @@ pub enum Stmt {
     DropTable {
         name: Identifier,
     },
+    Insert {
+        table: Identifier,
+        columns: Option<Vec<Identifier>>,
+        source: InsertSource,
+    },
     Select(Select),
 }

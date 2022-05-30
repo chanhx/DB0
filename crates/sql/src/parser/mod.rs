@@ -1,6 +1,7 @@
 mod common;
 mod ddl;
 mod expr;
+mod insert;
 mod query;
 
 use crate::{
@@ -43,6 +44,7 @@ impl<'a> Parser<'a> {
         Some(match self.tokens.next()? {
             Ok((Token::Keyword(Keyword::CREATE), _)) => self.parse_create(),
             Ok((Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
+            Ok((Token::Keyword(Keyword::INSERT), _)) => self.parse_insert(),
             Ok((Token::Keyword(Keyword::SELECT), _)) => {
                 self.parse_select().map(|select| Stmt::Select(select))
             }

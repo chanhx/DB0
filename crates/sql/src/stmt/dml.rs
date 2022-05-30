@@ -17,6 +17,12 @@ pub enum Join {
     Right,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum InsertSource {
+    Values(Vec<Expr>),
+    FromSelect(Box<Select>),
+}
+
 macros::pub_fields_struct! {
     #[derive(Debug, PartialEq)]
     struct Select {
