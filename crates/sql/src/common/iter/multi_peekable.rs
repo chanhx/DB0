@@ -36,7 +36,7 @@ impl<I: Iterator> MultiPeekable<I> {
     }
 
     pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
-        match self.iter.next()? {
+        match self.next()? {
             matched if func(&matched) => Some(matched),
             other => {
                 self.buf.push_back(other);
@@ -134,6 +134,8 @@ mod tests {
     #[test]
     fn next_if() {
         let mut iter = (0..5).multi_peekable();
+
+        assert_eq!(iter.next_if(|&x| x == 1), None);
         // The first item of the iterator is 0; consume it.
         assert_eq!(iter.next_if(|&x| x == 0), Some(0));
         // The next item returned is now 1, so `consume` will return `false`.
