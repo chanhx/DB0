@@ -102,7 +102,7 @@ mod tests {
             }),
         ];
 
-        let output = Parser::new(input).parse();
+        let output = Parser::parse(input);
 
         assert_eq!(output, expected_output);
     }

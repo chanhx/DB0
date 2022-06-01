@@ -17,16 +17,18 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(src: &'a str) -> Self {
+    fn new(src: &'a str) -> Self {
         Self {
             src,
             tokens: Lexer::new(src).multi_peekable(),
         }
     }
 
-    pub fn parse(mut self) -> Vec<Result<Stmt>> {
+    pub fn parse(sql: &'a str) -> Vec<Result<Stmt>> {
+        let mut parser = Self::new(sql);
+
         let mut stmts = Vec::new();
-        while let Some(stmt) = self.parse_statement() {
+        while let Some(stmt) = parser.parse_statement() {
             let met_err = stmt.is_err();
             stmts.push(stmt);
 
@@ -58,13 +60,10 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::{
+        common::test_utils::identifier_from_str,
         error::Result,
-        stmt::{Column, ColumnConstraint, DataType, Identifier, Stmt, TableConstraint},
+        stmt::{Column, ColumnConstraint, DataType, Stmt, TableConstraint},
     };
-
-    fn identifier_from_str(s: &str) -> Identifier {
-        Identifier(s.to_string(), 0..=s.len() - 1)
-    }
 
     #[test]
     fn parse_ddl() {
@@ -134,7 +133,7 @@ mod tests {
             }),
         ];
 
-        let output = Parser::new(sql).parse();
+        let output = Parser::parse(sql);
 
         assert_eq!(output.len(), expected_output.len());
         std::iter::zip(output, expected_output).for_each(|(a, b)| {

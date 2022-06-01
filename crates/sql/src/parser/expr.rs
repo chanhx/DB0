@@ -87,12 +87,8 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::stmt::{Identifier, Operation},
+        crate::{common::test_utils::identifier_from_str, stmt::Operation},
     };
-
-    fn identifier_from_str(s: &str) -> Identifier {
-        Identifier(s.to_string(), 0..=s.len() - 1)
-    }
 
     #[test]
     fn it_works() {
