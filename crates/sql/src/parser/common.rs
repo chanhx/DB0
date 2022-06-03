@@ -81,15 +81,24 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_comma_separated_within_parentheses<T, F>(
         &mut self,
         func: F,
+        allow_empty: bool,
     ) -> Result<Vec<T>>
     where
         F: FnMut(&mut Parser<'a>) -> Result<T>,
     {
         self.must_match(Token::LeftParen)?;
-        let result = self.parse_comma_separated(func);
-        self.must_match(Token::RightParen)?;
 
-        result
+        Ok(match self.tokens.peek() {
+            Some(Ok((Token::RightParen, _))) if allow_empty => {
+                self.tokens.next();
+                Vec::new()
+            }
+            _ => {
+                let result = self.parse_comma_separated(func)?;
+                self.must_match(Token::RightParen)?;
+                result
+            }
+        })
     }
 
     pub(super) fn parse_comma_separated<T, F>(&mut self, mut func: F) -> Result<Vec<T>>

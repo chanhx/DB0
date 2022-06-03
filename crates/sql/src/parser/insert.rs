@@ -16,14 +16,14 @@ impl<'a> Parser<'a> {
         let table = self.parse_identifier()?;
         let columns = match self.tokens.peek() {
             Some(Ok((Token::LeftParen, _))) => {
-                Some(self.parse_comma_separated_within_parentheses(Self::parse_identifier)?)
+                Some(self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?)
             }
             _ => None,
         };
 
         let source = match_token!(self.tokens.next(), {
             (Token::Keyword(Keyword::VALUES), _) => {
-                let values = self.parse_comma_separated_within_parentheses(Self::parse_expr)?;
+                let values = self.parse_comma_separated_within_parentheses(Self::parse_expr, false)?;
                 InsertSource::Values(values)
             },
             (Token::Keyword(Keyword::SELECT), _) => {

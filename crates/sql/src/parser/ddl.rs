@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
                 },
                 (Token::Keyword(Keyword::PRIMARY), _) => {
                     self.must_match(Token::Keyword(Keyword::KEY))?;
-                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier)?;
+                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
                     table_constraints.push(TableConstraint::PrimaryKey(columns));
                 },
@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
                     let name = self.try_match(Token::Identifier).map(|item| {
                         self.identifier_from_span(item.1)
                     });
-                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier)?;
+                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
                     table_constraints.push(TableConstraint::Unique {
                         name,
@@ -143,7 +143,8 @@ impl<'a> Parser<'a> {
         self.must_match(Token::Keyword(Keyword::ON))?;
 
         let table = self.parse_identifier()?;
-        let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier)?;
+        let columns =
+            self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
         Ok(Stmt::CreateIndex {
             is_unique,
