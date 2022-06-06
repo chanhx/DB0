@@ -3,7 +3,7 @@ use {
     crate::{
         error::{Error, Result},
         lexer::{Keyword, Token},
-        stmt::{ColumnIdentifier, Expr, InfixOperator, Literal, Operator, PrefixOperator},
+        stmt::{ColumnRef, Expr, InfixOperator, Literal, Operator, PrefixOperator},
     },
 };
 
@@ -52,12 +52,12 @@ impl<'a> Parser<'a> {
                     Some(Ok((Token::Period, _))) => {
                         self.tokens.next();
                         let column = self.parse_identifier()?;
-                        Expr::Column(ColumnIdentifier {
+                        Expr::Column(ColumnRef {
                             column,
                             table: Some(id),
                         })
                     },
-                    _ => Expr::Column(ColumnIdentifier {
+                    _ => Expr::Column(ColumnRef {
                         column: id,
                         table: None,
                     })
@@ -96,11 +96,11 @@ mod tests {
         let expected_output = Expr::Operation(Operation::GreaterThanOrEqual(
             Box::new(Expr::Operation(Operation::Add(
                 Box::new(Expr::Operation(Operation::Add(
-                    Box::from(Expr::Column(ColumnIdentifier {
+                    Box::from(Expr::Column(ColumnRef {
                         column: identifier_from_str("a"),
                         table: None,
                     })),
-                    Box::from(Expr::Column(ColumnIdentifier {
+                    Box::from(Expr::Column(ColumnRef {
                         column: identifier_from_str("c"),
                         table: Some(identifier_from_str("b")),
                     })),

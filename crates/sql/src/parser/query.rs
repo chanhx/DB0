@@ -123,7 +123,7 @@ mod tests {
         super::*,
         crate::{
             common::test_utils::identifier_from_str,
-            stmt::{ColumnIdentifier, Literal, Operation, Stmt},
+            stmt::{ColumnRef, Literal, Operation, Stmt},
         },
     };
 
@@ -134,14 +134,14 @@ mod tests {
             distinct: false,
             targets: vec![
                 SelectItem {
-                    expr: Expr::Column(ColumnIdentifier {
+                    expr: Expr::Column(ColumnRef {
                         column: identifier_from_str("a"),
                         table: None,
                     }),
                     alias: None,
                 },
                 SelectItem {
-                    expr: Expr::Column(ColumnIdentifier {
+                    expr: Expr::Column(ColumnRef {
                         column: identifier_from_str("e"),
                         table: Some(identifier_from_str("d")),
                     }),
@@ -157,11 +157,11 @@ mod tests {
                     ),
                     join: Join::Inner,
                     cond: Some(Expr::Operation(Operation::Equal(
-                        Box::new(Expr::Column(ColumnIdentifier {
+                        Box::new(Expr::Column(ColumnRef {
                             column: identifier_from_str("a"),
                             table: Some(identifier_from_str("abc")),
                         })),
-                        Box::new(Expr::Column(ColumnIdentifier {
+                        Box::new(Expr::Column(ColumnRef {
                             column: identifier_from_str("f"),
                             table: Some(identifier_from_str("d")),
                         })),
@@ -169,7 +169,7 @@ mod tests {
                 }],
             }),
             cond: Some(Expr::Operation(Operation::Equal(
-                Box::new(Expr::Column(ColumnIdentifier {
+                Box::new(Expr::Column(ColumnRef {
                     column: identifier_from_str("c"),
                     table: None,
                 })),

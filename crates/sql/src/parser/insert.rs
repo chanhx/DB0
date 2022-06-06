@@ -48,7 +48,7 @@ mod tests {
         super::*,
         crate::{
             common::test_utils::identifier_from_str,
-            stmt::{ColumnIdentifier, FromItem, Literal, Select, SelectFrom, SelectItem, Stmt},
+            stmt::{ColumnRef, FromItem, Literal, Select, SelectFrom, SelectItem, Stmt},
         },
     };
 
@@ -79,14 +79,14 @@ mod tests {
                     distinct: false,
                     targets: vec![
                         SelectItem {
-                            expr: Expr::Column(ColumnIdentifier {
+                            expr: Expr::Column(ColumnRef {
                                 column: identifier_from_str("a"),
                                 table: None,
                             }),
                             alias: None,
                         },
                         SelectItem {
-                            expr: Expr::Column(ColumnIdentifier {
+                            expr: Expr::Column(ColumnRef {
                                 column: identifier_from_str("b"),
                                 table: None,
                             }),

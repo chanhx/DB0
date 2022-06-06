@@ -1,12 +1,12 @@
 //! The definition of `Expr` is directly inspired by `toydb`.
 use {
-    super::{ColumnIdentifier, Identifier},
+    super::{ColumnRef, Identifier},
     crate::lexer::{Keyword, Token},
 };
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    Column(ColumnIdentifier),
+    Column(ColumnRef),
     Literal(Literal),
     FunctionCall {
         func: Identifier,

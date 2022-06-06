@@ -54,7 +54,7 @@ macros::pub_fields_struct! {
     }
 
     #[derive(Debug, PartialEq)]
-    struct ColumnIdentifier {
+    struct ColumnRef {
         column: Identifier,
         table: Option<Identifier>,
     }
