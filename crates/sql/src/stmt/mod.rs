@@ -4,6 +4,8 @@ mod expr;
 
 pub(crate) use {common::*, dml::*, expr::*};
 
+use crate::common::Spanned;
+
 #[derive(Debug, PartialEq)]
 pub enum Stmt {
     CreateDatabase {
@@ -20,7 +22,7 @@ pub enum Stmt {
         if_not_exists: bool,
         name: Identifier,
         columns: Vec<Column>,
-        constraints: Vec<TableConstraint>,
+        constraints: Vec<Spanned<TableConstraint>>,
         from_query: Option<Box<Select>>,
     },
     DropDatabase {

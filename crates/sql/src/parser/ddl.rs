@@ -1,6 +1,7 @@
 use {
     super::{common::match_token, Parser},
     crate::{
+        common::Spanned,
         error::{Error, Result},
         lexer::{Keyword, Token},
         stmt::{Column, ColumnConstraint, Stmt, TableConstraint},
@@ -60,7 +61,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_table_structure(&mut self) -> Result<(Vec<Column>, Vec<TableConstraint>)> {
+    fn parse_table_structure(&mut self) -> Result<(Vec<Column>, Vec<Spanned<TableConstraint>>)> {
         if self.try_match(Token::LeftParen).is_none() {
             return Ok((vec![], vec![]));
         }
@@ -85,22 +86,22 @@ impl<'a> Parser<'a> {
                         constraints,
                     });
                 },
-                (Token::Keyword(Keyword::PRIMARY), _) => {
+                (Token::Keyword(Keyword::PRIMARY), s1) => {
                     self.must_match(Token::Keyword(Keyword::KEY))?;
-                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
+                    let (columns, s2) = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
-                    table_constraints.push(TableConstraint::PrimaryKey(columns));
+                    table_constraints.push((TableConstraint::PrimaryKey(columns), (*s1.start()..=*s2.end())));
                 },
-                (Token::Keyword(Keyword::UNIQUE), _) => {
+                (Token::Keyword(Keyword::UNIQUE), s1) => {
                     let name = self.try_match(Token::Identifier).map(|item| {
                         self.identifier_from_span(item.1)
                     });
-                    let columns = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
+                    let (columns, s2) = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
-                    table_constraints.push(TableConstraint::Unique {
+                    table_constraints.push((TableConstraint::Unique {
                         name,
                         columns,
-                    });
+                    }, (*s1.start()..=*s2.end())));
                 },
             });
 
@@ -113,25 +114,27 @@ impl<'a> Parser<'a> {
         Ok((columns, table_constraints))
     }
 
-    fn parse_column_constraint(&mut self) -> Result<Vec<ColumnConstraint>> {
+    fn parse_column_constraint(&mut self) -> Result<Vec<Spanned<ColumnConstraint>>> {
         let mut constraints = Vec::new();
 
-        while let Some(Ok((Token::Keyword(keyword), span))) = self
+        while let Some(Ok((Token::Keyword(keyword), s1))) = self
             .tokens
             .next_if(|item| matches!(item, Ok((Token::Keyword(_), _))))
         {
-            constraints.push(match keyword {
+            let (constraint, span) = match keyword {
                 Keyword::PRIMARY => {
-                    self.must_match(Token::Keyword(Keyword::KEY))?;
-                    ColumnConstraint::PrimaryKey
+                    let (_, s2) = self.must_match(Token::Keyword(Keyword::KEY))?;
+                    (ColumnConstraint::PrimaryKey, (*s1.start()..=*s2.end()))
                 }
-                Keyword::UNIQUE => ColumnConstraint::Unique,
+                Keyword::UNIQUE => (ColumnConstraint::Unique, s1),
                 Keyword::NOT => {
-                    self.must_match(Token::Keyword(Keyword::NULL))?;
-                    ColumnConstraint::NotNull
+                    let (_, s2) = self.must_match(Token::Keyword(Keyword::NULL))?;
+                    (ColumnConstraint::NotNull, (*s1.start()..=*s2.end()))
                 }
-                _ => return Err(Error::SyntaxError(span)),
-            });
+                _ => return Err(Error::SyntaxError(s1)),
+            };
+
+            constraints.push((constraint, span));
         }
 
         Ok(constraints)
@@ -143,7 +146,7 @@ impl<'a> Parser<'a> {
         self.must_match(Token::Keyword(Keyword::ON))?;
 
         let table = self.parse_identifier()?;
-        let columns =
+        let (columns, _) =
             self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
         Ok(Stmt::CreateIndex {

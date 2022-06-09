@@ -102,15 +102,18 @@ mod tests {
                     Column {
                         name: identifier_from_str("b"),
                         data_type: DataType::Varchar(15),
-                        constraints: vec![ColumnConstraint::NotNull],
+                        constraints: vec![(ColumnConstraint::NotNull, (180..=187))],
                     },
                     Column {
                         name: identifier_from_str("c"),
                         data_type: DataType::Integer,
-                        constraints: vec![ColumnConstraint::Unique],
+                        constraints: vec![(ColumnConstraint::Unique, (216..=221))],
                     },
                 ],
-                constraints: vec![TableConstraint::PrimaryKey(vec![identifier_from_str("a")])],
+                constraints: vec![(
+                    TableConstraint::PrimaryKey(vec![identifier_from_str("a")]),
+                    (110..=124),
+                )],
                 from_query: None,
             }),
             Ok(Stmt::DropDatabase {

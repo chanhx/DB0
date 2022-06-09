@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
 
                 match self.tokens.peek() {
                     Some(Ok((Token::LeftParen, _))) => {
-                        let arguments = self.parse_comma_separated_within_parentheses(Self::parse_expr, true)?;
+                        let (arguments, _) = self.parse_comma_separated_within_parentheses(Self::parse_expr, true)?;
                         Expr::FunctionCall { func: id, arguments }
                     },
                     Some(Ok((Token::Period, _))) => {

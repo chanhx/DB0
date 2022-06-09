@@ -1,6 +1,6 @@
 use {
     super::Expr,
-    crate::common::{macros, Span},
+    crate::common::{macros, Span, Spanned},
 };
 
 #[derive(Debug)]
@@ -50,7 +50,7 @@ macros::pub_fields_struct! {
     struct Column {
         name: Identifier,
         data_type: DataType,
-        constraints: Vec<ColumnConstraint>,
+        constraints: Vec<Spanned<ColumnConstraint>>,
     }
 
     #[derive(Debug, PartialEq)]

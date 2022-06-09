@@ -1,7 +1,7 @@
 use {
     super::Parser,
     crate::{
-        common::Span,
+        common::{Span, Spanned},
         error::{Error, Result},
         lexer::{Keyword, Token},
         stmt::{DataType, Identifier},
@@ -82,21 +82,22 @@ impl<'a> Parser<'a> {
         &mut self,
         func: F,
         allow_empty: bool,
-    ) -> Result<Vec<T>>
+    ) -> Result<Spanned<Vec<T>>>
     where
         F: FnMut(&mut Parser<'a>) -> Result<T>,
     {
-        self.must_match(Token::LeftParen)?;
+        let (_, s1) = self.must_match(Token::LeftParen)?;
 
         Ok(match self.tokens.peek() {
-            Some(Ok((Token::RightParen, _))) if allow_empty => {
+            Some(Ok((Token::RightParen, s2))) if allow_empty => {
+                let end = *s2.end();
                 self.tokens.next();
-                Vec::new()
+                (Vec::new(), (*s1.start()..=end))
             }
             _ => {
                 let result = self.parse_comma_separated(func)?;
-                self.must_match(Token::RightParen)?;
-                result
+                let (_, s2) = self.must_match(Token::RightParen)?;
+                (result, (*s1.start()..=*s2.end()))
             }
         })
     }
