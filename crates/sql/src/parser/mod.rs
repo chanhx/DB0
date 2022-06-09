@@ -1,14 +1,17 @@
+pub mod ast;
 mod common;
 mod ddl;
 mod expr;
 mod insert;
 mod query;
 
-use crate::{
-    common::iter::{MultiPeek, MultiPeekable},
-    error::{Error, Result},
-    lexer::{Keyword, Lexer, Token},
-    stmt::Stmt,
+use {
+    crate::{
+        common::iter::{MultiPeek, MultiPeekable},
+        error::{Error, Result},
+        lexer::{Keyword, Lexer, Token},
+    },
+    ast::Stmt,
 };
 
 pub struct Parser<'a> {
@@ -60,9 +63,10 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::{
-        common::test_utils::identifier_from_str,
         error::Result,
-        stmt::{Column, ColumnConstraint, DataType, Stmt, TableConstraint},
+        parser::ast::{
+            identifier_from_str, Column, ColumnConstraint, DataType, Stmt, TableConstraint,
+        },
     };
 
     #[test]

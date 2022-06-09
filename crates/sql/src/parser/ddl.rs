@@ -1,10 +1,13 @@
 use {
-    super::{common::match_token, Parser},
+    super::{
+        ast::{Column, ColumnConstraint, Stmt, TableConstraint},
+        common::match_token,
+        Parser,
+    },
     crate::{
         common::Spanned,
         error::{Error, Result},
         lexer::{Keyword, Token},
-        stmt::{Column, ColumnConstraint, Stmt, TableConstraint},
     },
 };
 

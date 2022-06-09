@@ -1,11 +1,12 @@
-use crate::stmt::InsertSource;
-
 use {
-    super::{common::match_token, Parser},
+    super::{
+        ast::{InsertSource, Stmt},
+        common::match_token,
+        Parser,
+    },
     crate::{
         error::{Error, Result},
         lexer::{Keyword, Token},
-        stmt::Stmt,
     },
 };
 
@@ -44,13 +45,10 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::stmt::Expr;
-
     use {
         super::*,
-        crate::{
-            common::test_utils::identifier_from_str,
-            stmt::{ColumnRef, FromItem, Literal, Select, SelectFrom, SelectItem, Stmt},
+        crate::parser::ast::{
+            identifier_from_str, ColumnRef, Expr, FromItem, Literal, Select, SelectFrom, SelectItem,
         },
     };
 

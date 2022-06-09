@@ -1,10 +1,12 @@
 use {
-    super::Parser,
+    super::{
+        ast::{DataType, Identifier},
+        Parser,
+    },
     crate::{
         common::{Span, Spanned},
         error::{Error, Result},
         lexer::{Keyword, Token},
-        stmt::{DataType, Identifier},
     },
     core::str::FromStr,
 };

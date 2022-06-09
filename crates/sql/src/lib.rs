@@ -1,8 +1,7 @@
 mod common;
 mod error;
 mod lexer;
-mod parser;
-mod stmt;
+pub mod parser;
 
 #[cfg(test)]
 mod tests {
