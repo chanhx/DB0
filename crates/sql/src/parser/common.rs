@@ -150,9 +150,9 @@ impl<'a> Parser<'a> {
 }
 
 macro_rules! match_token {
-    ( $token:expr, { $($t:tt $(| $ot:tt)* $(if $cond:expr)? => $e:expr,)* } ) => {
+    ( $token:expr, { $( $($t:pat_param)|* $(if $cond:expr)? => $e:expr, )* } ) => {
         match $token {
-            $(Some(Ok($t)) $(| Some(Ok($ot)))* $(if $cond)? => $e,)*
+            $( $( Some(Ok($t)) )|* $(if $cond)? => $e,)*
 
             Some(Ok((_, span))) => return Err(Error::SyntaxError(span)),
             Some(Err(e)) => return Err(e),
