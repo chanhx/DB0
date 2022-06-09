@@ -4,7 +4,7 @@ pub(crate) use token::{Keyword, Token};
 
 use {
     crate::{
-        common::Span,
+        common::Spanned,
         error::{Error, Result},
     },
     std::{
@@ -19,7 +19,7 @@ pub(super) struct Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<(Token, Span)>;
+    type Item = Result<Spanned<Token>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // consume whitespace
@@ -63,7 +63,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn scan_string(&mut self) -> Option<Result<(Token, Span)>> {
+    fn scan_string(&mut self) -> Option<Result<Spanned<Token>>> {
         let begin = self.iter.next_if(|&(_, c)| c == '\'')?.0;
 
         while let Some((i, c)) = self.iter.next() {
@@ -85,7 +85,7 @@ impl<'a> Lexer<'a> {
         )))
     }
 
-    fn scan_number(&mut self) -> Option<(Token, Span)> {
+    fn scan_number(&mut self) -> Option<Spanned<Token>> {
         let begin = self.iter.next_if(|&(_, c)| c.is_digit(10))?.0;
 
         self.iter_next_while(|c| c.is_digit(10));
@@ -100,7 +100,7 @@ impl<'a> Lexer<'a> {
         Some((Token::Number { is_float }, begin..=self.iter_offset()))
     }
 
-    fn scan_identifier(&mut self) -> Option<(Token, Span)> {
+    fn scan_identifier(&mut self) -> Option<Spanned<Token>> {
         let begin = self.iter.next_if(|&(_, c)| c.is_alphabetic())?.0;
 
         self.iter_next_while(|&c| c.is_alphanumeric() || c == '_');
@@ -108,14 +108,14 @@ impl<'a> Lexer<'a> {
         let range = begin..=self.iter_offset();
         let ident = &self.src[range.clone()];
 
-        Keyword::from_str(ident)
+        let token = Keyword::from_str(ident)
             .map(Token::Keyword)
-            .map(|token| (token, range.clone()))
-            .ok()
-            .or_else(|| Some((Token::Identifier, range.clone())))
+            .unwrap_or(Token::Identifier);
+
+        Some((token, range))
     }
 
-    fn scan_symbol(&mut self) -> Option<(Token, Span)> {
+    fn scan_symbol(&mut self) -> Option<Spanned<Token>> {
         let &(begin, next_char) = self.iter.peek()?;
 
         let mut iter_should_next = true;
@@ -179,7 +179,7 @@ impl<'a> Lexer<'a> {
 mod tests {
     use {super::*, std::iter::zip};
 
-    fn test(input: &str, expected_output: &[Result<(Token, Span)>]) {
+    fn test(input: &str, expected_output: &[Result<Spanned<Token>>]) {
         let lexer = Lexer::new(&input);
         let output = lexer.collect::<Vec<_>>();
 
@@ -190,7 +190,7 @@ mod tests {
         input: &str,
         strs: Vec<&str>,
         tokens: Vec<Token>,
-    ) -> Vec<Result<(Token, Span)>> {
+    ) -> Vec<Result<Spanned<Token>>> {
         assert_eq!(strs.len(), tokens.len());
 
         zip(strs, tokens)
