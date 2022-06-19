@@ -63,10 +63,9 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::{
+        common::DataType,
         error::Result,
-        parser::ast::{
-            identifier_from_str, Column, ColumnConstraint, DataType, Stmt, TableConstraint,
-        },
+        parser::ast::{identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint},
     };
 
     #[test]

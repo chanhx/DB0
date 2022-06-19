@@ -1,3 +1,4 @@
+pub mod catalog;
 mod common;
 mod error;
 mod lexer;

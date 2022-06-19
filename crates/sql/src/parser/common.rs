@@ -1,10 +1,7 @@
 use {
-    super::{
-        ast::{DataType, Identifier},
-        Parser,
-    },
+    super::{ast::Identifier, Parser},
     crate::{
-        common::{Span, Spanned},
+        common::{DataType, Span, Spanned},
         error::{Error, Result},
         lexer::{Keyword, Token},
     },
