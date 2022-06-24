@@ -48,7 +48,7 @@ mod tests {
     use {
         super::*,
         crate::parser::ast::{
-            identifier_from_str, ColumnRef, Expr, FromItem, Literal, Select, SelectFrom, SelectItem,
+            identifier_from_str, ColumnRef, Expr, FromItem, Literal, Query, SelectFrom, TargetElem,
         },
     };
 
@@ -75,17 +75,17 @@ mod tests {
             Ok(Stmt::Insert {
                 table: identifier_from_str("def"),
                 columns: None,
-                source: InsertSource::FromSelect(Box::new(Select {
+                source: InsertSource::FromSelect(Box::new(Query {
                     distinct: false,
                     targets: vec![
-                        SelectItem {
+                        TargetElem::Expr {
                             expr: Expr::Column(ColumnRef {
                                 column: identifier_from_str("a"),
                                 table: None,
                             }),
                             alias: None,
                         },
-                        SelectItem {
+                        TargetElem::Expr {
                             expr: Expr::Column(ColumnRef {
                                 column: identifier_from_str("b"),
                                 table: None,
@@ -94,7 +94,10 @@ mod tests {
                         },
                     ],
                     from: Some(SelectFrom {
-                        item: FromItem::Table(identifier_from_str("abc"), None),
+                        item: FromItem::Table {
+                            name: identifier_from_str("abc"),
+                            alias: None,
+                        },
                         joins: vec![],
                     }),
                     cond: None,

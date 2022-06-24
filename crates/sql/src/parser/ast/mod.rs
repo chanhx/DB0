@@ -23,7 +23,7 @@ pub enum Stmt {
         name: Identifier,
         columns: Vec<Column>,
         constraints: Vec<Spanned<TableConstraint>>,
-        from_query: Option<Box<Select>>,
+        from_query: Option<Box<Query>>,
     },
     DropDatabase {
         name: Identifier,
@@ -36,5 +36,5 @@ pub enum Stmt {
         columns: Option<Vec<Identifier>>,
         source: InsertSource,
     },
-    Select(Select),
+    Select(Query),
 }

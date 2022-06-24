@@ -1,46 +1,44 @@
 use {
     super::{Expr, Identifier},
-    crate::common::macros,
+    crate::common::{macros, JoinType},
 };
 
 #[derive(Debug, PartialEq)]
 pub enum FromItem {
-    Table(Identifier, Option<Identifier>),
-    SubQuery(Box<Select>, Option<Identifier>),
+    Table {
+        name: Identifier,
+        alias: Option<Identifier>,
+    },
+    SubQuery {
+        query: Box<Query>,
+        alias: Option<Identifier>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Join {
-    Cross,
-    Inner,
-    Left,
-    Right,
+pub enum TargetElem {
+    Expr { expr: Expr, alias: Option<String> },
+    Wildcard { table: Option<String> },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum InsertSource {
     Values(Vec<Expr>),
-    FromSelect(Box<Select>),
+    FromSelect(Box<Query>),
 }
 
 macros::pub_fields_struct! {
     #[derive(Debug, PartialEq)]
-    struct Select {
+    struct Query {
         distinct: bool,
-        targets: Vec<SelectItem>,
+        targets: Vec<TargetElem>,
         from: Option<SelectFrom>,
         cond: Option<Expr>,
     }
 
     #[derive(Debug, PartialEq)]
-    struct SelectItem {
-        expr: Expr,
-        alias: Option<Identifier>,
-    }
-
-    #[derive(Debug, PartialEq)]
     struct JoinItem {
-        join: Join,
+        join_type: JoinType,
         item: FromItem,
         cond: Option<Expr>,
     }

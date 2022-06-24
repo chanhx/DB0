@@ -6,4 +6,4 @@ pub type Span = std::ops::RangeInclusive<usize>;
 
 pub type Spanned<T> = (T, Span);
 
-pub use types::DataType;
+pub use types::{DataType, JoinType};
