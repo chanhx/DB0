@@ -12,6 +12,12 @@ impl PartialEq for Identifier {
     }
 }
 
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn identifier_from_str(s: &str) -> Identifier {
     Identifier(s.to_string(), 0..=s.len() - 1)
@@ -27,10 +33,7 @@ pub enum ColumnConstraint {
 
 #[derive(Debug, PartialEq)]
 pub enum TableConstraint {
-    Unique {
-        name: Option<Identifier>,
-        columns: Vec<Identifier>,
-    },
+    Unique(Vec<Identifier>),
     PrimaryKey(Vec<Identifier>),
 }
 

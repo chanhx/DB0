@@ -2,6 +2,7 @@ pub mod catalog;
 mod common;
 mod error;
 mod lexer;
+pub mod logical_plan;
 pub mod parser;
 
 #[cfg(test)]

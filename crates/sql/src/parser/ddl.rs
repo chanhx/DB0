@@ -96,15 +96,12 @@ impl<'a> Parser<'a> {
                     table_constraints.push((TableConstraint::PrimaryKey(columns), (*s1.start()..=*s2.end())));
                 },
                 (Token::Keyword(Keyword::UNIQUE), s1) => {
-                    let name = self.try_match(Token::Identifier).map(|item| {
-                        self.identifier_from_span(item.1)
-                    });
                     let (columns, s2) = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
-                    table_constraints.push((TableConstraint::Unique {
-                        name,
-                        columns,
-                    }, (*s1.start()..=*s2.end())));
+                    table_constraints.push((
+                        TableConstraint::Unique(columns),
+                        (*s1.start()..=*s2.end()),
+                    ));
                 },
             });
 
