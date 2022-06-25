@@ -11,6 +11,7 @@ pub enum Error {
     UndefinedColumn { span: Span, details: String },
     UnexpectedChar { c: char, location: usize },
     UnexpectedEnd,
+    RelationNotExist { name: String },
     SyntaxError(Span),
 }
 
@@ -29,6 +30,7 @@ impl Display for Error {
                 Self::UndefinedColumn { details, .. } => details.clone(),
                 Self::UnexpectedChar { c, .. } => format!("unexpected char: {}", c),
                 Self::UnexpectedEnd => "unexpected end of input".to_string(),
+                Self::RelationNotExist { name } => format!("relation {} does not exists", name),
                 Self::SyntaxError(_) => "syntax error".to_string(),
             }
         )

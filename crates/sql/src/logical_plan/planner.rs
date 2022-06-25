@@ -1,19 +1,23 @@
 use {
     super::{create_table::build_table_schema, Node},
     crate::{
-        catalog::Catalog,
+        catalog::DatabaseCatalog,
         error::{Error, Result},
         parser::ast::Stmt,
     },
 };
 
-pub struct Planner<'a, C: Catalog> {
-    catalog: &'a mut C,
+pub struct Planner<'a, D: DatabaseCatalog> {
+    db_catalog: &'a mut D,
 }
 
-impl<'a, C: Catalog> Planner<'a, C> {
-    pub fn new(catalog: &'a mut C) -> Self {
-        Self { catalog }
+impl<'a, D: DatabaseCatalog> Planner<'a, D> {
+    pub fn new(db_catalog: &'a mut D) -> Self {
+        Self { db_catalog }
+    }
+
+    pub fn db_catalog(&self) -> &D {
+        self.db_catalog
     }
 
     pub fn build_node(&self, stmt: Stmt) -> Result<Node> {
@@ -36,6 +40,8 @@ impl<'a, C: Catalog> Planner<'a, C> {
                 if_not_exists,
                 schema: build_table_schema(name.0, columns, constraints)?,
             },
+
+            Stmt::Select(query) => self.build_query_plan(query)?,
 
             _ => return Err(Error::Internal("unimplemented".to_string())),
         })
