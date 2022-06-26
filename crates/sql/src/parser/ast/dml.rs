@@ -23,8 +23,8 @@ pub enum TargetElem {
 
 #[derive(Debug, PartialEq)]
 pub enum InsertSource {
-    Values(Vec<Expr>),
-    FromSelect(Box<Query>),
+    Values(Vec<Vec<Expr>>),
+    FromQuery(Box<Query>),
 }
 
 macros::pub_fields_struct! {

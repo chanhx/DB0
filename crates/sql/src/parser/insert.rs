@@ -26,12 +26,18 @@ impl<'a> Parser<'a> {
 
         let source = match_token!(self.tokens.next(), {
             (Token::Keyword(Keyword::VALUES), _) => {
-                let (values, _) = self.parse_comma_separated_within_parentheses(Self::parse_expr, false)?;
+                let values = self.parse_comma_separated(|parser|
+                    parser.parse_comma_separated_within_parentheses(Self::parse_expr, false)
+                )?
+                .into_iter()
+                .map(|(v, _)| v)
+                .collect();
+
                 InsertSource::Values(values)
             },
             (Token::Keyword(Keyword::SELECT), _) => {
                 let select = self.parse_select()?;
-                InsertSource::FromSelect(Box::new(select))
+                InsertSource::FromQuery(Box::new(select))
             },
         });
 
@@ -66,16 +72,16 @@ mod tests {
                     identifier_from_str("b"),
                     identifier_from_str("c"),
                 ]),
-                source: InsertSource::Values(vec![
+                source: InsertSource::Values(vec![vec![
                     Expr::Literal(Literal::Integer(1)),
                     Expr::Literal(Literal::Float(3.14)),
                     Expr::Literal(Literal::Boolean(true)),
-                ]),
+                ]]),
             }),
             Ok(Stmt::Insert {
                 table: identifier_from_str("def"),
                 columns: None,
-                source: InsertSource::FromSelect(Box::new(Query {
+                source: InsertSource::FromQuery(Box::new(Query {
                     distinct: false,
                     targets: vec![
                         TargetElem::Expr {
