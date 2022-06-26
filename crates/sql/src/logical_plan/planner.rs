@@ -43,6 +43,12 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
 
             Stmt::Select(query) => self.build_query_plan(query)?,
 
+            Stmt::Insert {
+                table,
+                columns,
+                source,
+            } => self.build_insert(table.0, columns, source)?,
+
             _ => return Err(Error::Internal("unimplemented".to_string())),
         })
     }

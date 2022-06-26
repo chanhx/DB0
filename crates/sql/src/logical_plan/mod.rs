@@ -1,4 +1,5 @@
 mod create_table;
+mod insert;
 mod planner;
 mod query;
 
@@ -25,6 +26,8 @@ pub enum Node {
     Filter(Filter),
     Projection(Projection),
     Join(Join),
+
+    Insert(Insert),
 }
 
 pub_fields_struct! {
@@ -54,5 +57,13 @@ pub_fields_struct! {
         left: Box<Node>,
         right: Box<Node>,
         // cond: Expr,
+    }
+
+    #[derive(Debug)]
+    struct Insert {
+        table_id: TableId,
+        // TODO: use ColumnId
+        columns: Option<Vec<String>>,
+        values: Vec<Vec<Expr>>,
     }
 }
