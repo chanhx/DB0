@@ -2,8 +2,8 @@ use {
     crate::{
         catalog::{DatabaseCatalog, TableSchema},
         error::{Error, Result},
-        parser::ast::{Expr, FromItem, JoinItem, Query, SelectFrom, TargetElem},
-        planner::{Filter, Join, Node, Planner, Projection, Scan},
+        parser::ast::{Expr, FromItem, Query, SelectFrom, TargetElem},
+        planner::{Filter, JoinItem, Node, Planner, Projection, Scan},
     },
     std::collections::HashMap,
 };
@@ -26,13 +26,28 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
     }
 
     fn build_from_clause(&'a self, scope: &mut Scope<'b>, from: SelectFrom) -> Result<Node> {
-        let mut node = self.build_scan(scope, from.item)?;
+        let node = self.build_scan(scope, from.item)?;
 
-        for join in from.joins {
-            node = self.build_join(scope, node, join)?;
-        }
+        let joined_nodes = from
+            .joins
+            .into_iter()
+            .map(|j| {
+                Ok(JoinItem {
+                    join_type: j.join_type,
+                    node: self.build_scan(scope, j.item)?,
+                    cond: j.cond,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
 
-        Ok(node)
+        Ok(if joined_nodes.len() > 0 {
+            Node::LogicalJoin {
+                initial_node: Box::new(node),
+                joined_nodes,
+            }
+        } else {
+            node
+        })
     }
 
     fn build_scan(&'a self, scope: &mut Scope<'b>, item: FromItem) -> Result<Node> {
@@ -58,14 +73,6 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
             }
             FromItem::SubQuery { .. } => unimplemented!("subquery is not supported now"),
         })
-    }
-
-    fn build_join(&'a self, scope: &mut Scope<'b>, node: Node, join: JoinItem) -> Result<Node> {
-        Ok(Node::Join(Join {
-            join_type: join.join_type,
-            left: Box::new(node),
-            right: Box::new(self.build_scan(scope, join.item)?),
-        }))
     }
 }
 

@@ -34,7 +34,11 @@ pub enum Node {
     Scan(Scan),
     Filter(Filter),
     Projection(Projection),
-    Join(Join),
+
+    LogicalJoin {
+        initial_node: Box<Node>,
+        joined_nodes: Vec<JoinItem>,
+    },
 
     Insert(Insert),
 }
@@ -61,11 +65,10 @@ pub_fields_struct! {
     }
 
     #[derive(Debug)]
-    struct Join {
+    struct JoinItem {
         join_type: JoinType,
-        left: Box<Node>,
-        right: Box<Node>,
-        // cond: Expr,
+        node: Node,
+        cond: Option<Expr>,
     }
 
     #[derive(Debug)]
