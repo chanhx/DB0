@@ -1,15 +1,24 @@
-mod create_table;
-mod insert;
-mod planner;
-mod query;
-
-pub use planner::Planner;
+mod logical_plan;
 
 use crate::{
-    catalog::{TableId, TableSchema},
+    catalog::{DatabaseCatalog, TableId, TableSchema},
     common::{macros::pub_fields_struct, JoinType},
     parser::ast::{Expr, TargetElem},
 };
+
+pub struct Planner<'a, D: DatabaseCatalog> {
+    db_catalog: &'a mut D,
+}
+
+impl<'a, D: DatabaseCatalog> Planner<'a, D> {
+    pub fn new(db_catalog: &'a mut D) -> Self {
+        Self { db_catalog }
+    }
+
+    pub fn db_catalog(&self) -> &D {
+        self.db_catalog
+    }
+}
 
 #[derive(Debug)]
 pub enum Node {

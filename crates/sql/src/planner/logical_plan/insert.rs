@@ -1,10 +1,8 @@
-use {
-    super::{Insert, Node, Planner},
-    crate::{
-        catalog::DatabaseCatalog,
-        error::{Error, Result},
-        parser::ast::{Identifier, InsertSource},
-    },
+use crate::{
+    catalog::DatabaseCatalog,
+    error::{Error, Result},
+    parser::ast::{Identifier, InsertSource},
+    planner::{Insert, Node, Planner},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

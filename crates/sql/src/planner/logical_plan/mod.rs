@@ -1,25 +1,18 @@
+mod create_table;
+mod insert;
+mod query;
+
 use {
-    super::{create_table::build_table_schema, Node},
     crate::{
         catalog::DatabaseCatalog,
         error::{Error, Result},
         parser::ast::Stmt,
+        planner::{Node, Planner},
     },
+    create_table::build_table_schema,
 };
 
-pub struct Planner<'a, D: DatabaseCatalog> {
-    db_catalog: &'a mut D,
-}
-
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn new(db_catalog: &'a mut D) -> Self {
-        Self { db_catalog }
-    }
-
-    pub fn db_catalog(&self) -> &D {
-        self.db_catalog
-    }
-
     pub fn build_node(&self, stmt: Stmt) -> Result<Node> {
         Ok(match stmt {
             Stmt::CreateDatabase {

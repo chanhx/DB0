@@ -1,11 +1,9 @@
-use crate::parser::ast::TargetElem;
-
 use {
-    super::{Filter, Join, Node, Planner, Projection, Scan},
     crate::{
         catalog::{DatabaseCatalog, TableSchema},
         error::{Error, Result},
-        parser::ast::{Expr, FromItem, JoinItem, Query, SelectFrom},
+        parser::ast::{Expr, FromItem, JoinItem, Query, SelectFrom, TargetElem},
+        planner::{Filter, Join, Node, Planner, Projection, Scan},
     },
     std::collections::HashMap,
 };

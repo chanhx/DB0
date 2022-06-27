@@ -2,8 +2,8 @@ pub mod catalog;
 mod common;
 mod error;
 mod lexer;
-pub mod logical_plan;
 pub mod parser;
+pub mod planner;
 
 #[cfg(test)]
 mod tests {
