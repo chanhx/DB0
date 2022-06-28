@@ -66,7 +66,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
                     scope.table_aliases.insert(alias.0, table);
                 }
 
-                Node::Scan(Scan {
+                Node::LogicalScan(Scan {
                     table_id,
                     projection: None,
                 })
