@@ -1,16 +1,23 @@
-use crate::{
-    catalog::DatabaseCatalog,
-    planner::{Join, JoinItem, Node, Planner},
+use {
+    super::{Join, PhysicalNode},
+    crate::{
+        catalog::DatabaseCatalog,
+        planner::{logical_plan::JoinItem, LogicalNode, Planner},
+    },
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub(super) fn decide_join_plan(&self, initial_node: Node, joined_nodes: Vec<JoinItem>) -> Node {
+    pub(super) fn decide_join_plan(
+        &self,
+        initial_node: LogicalNode,
+        joined_nodes: Vec<JoinItem>,
+    ) -> PhysicalNode {
         let mut node = self.decide_physical_plan(initial_node);
 
         for join in joined_nodes {
             let joined_node = self.decide_physical_plan(join.node);
 
-            node = Node::NestedLoopJoin(Join {
+            node = PhysicalNode::NestedLoopJoin(Join {
                 join_type: join.join_type,
                 left: Box::new(node),
                 right: Box::new(joined_node),

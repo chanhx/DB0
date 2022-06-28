@@ -1,10 +1,14 @@
 mod logical_plan;
 mod physical_plan;
 
-use crate::{
-    catalog::{DatabaseCatalog, TableId, TableSchema},
-    common::{macros::pub_fields_struct, JoinType},
-    parser::ast::{Expr, TargetElem},
+use {
+    crate::{
+        catalog::{DatabaseCatalog, TableId},
+        common::macros::pub_fields_struct,
+        parser::ast::Expr,
+    },
+    logical_plan::LogicalNode,
+    physical_plan::PhysicalNode,
 };
 
 pub struct Planner<'a, D: DatabaseCatalog> {
@@ -23,35 +27,8 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
 
 #[derive(Debug)]
 pub enum Node {
-    // logical plans
-    LogicalJoin {
-        initial_node: Box<Node>,
-        joined_nodes: Vec<JoinItem>,
-    },
-    LogicalScan(Scan),
-
-    // physical plans
-    CreateDatabase {
-        if_not_exists: bool,
-        name: String,
-    },
-    CreateTable {
-        if_not_exists: bool,
-        schema: TableSchema,
-    },
-
-    SeqScan(Scan),
-    IndexScan(Scan),
-    IndexOnlyScan(Scan),
-
-    Filter(Filter),
-    Projection(Projection),
-
-    HashJoin(Join),
-    MergeJoin(Join),
-    NestedLoopJoin(Join),
-
-    Insert(Insert),
+    Logical(LogicalNode),
+    Physical(PhysicalNode),
 }
 
 pub_fields_struct! {
@@ -60,34 +37,6 @@ pub_fields_struct! {
         table_id: TableId,
         // TODO: use ColumnId
         projection: Option<Vec<String>>,
-    }
-
-    #[derive(Debug)]
-    struct Filter {
-        input: Option<Box<Node>>,
-        predict: Expr,
-    }
-
-    #[derive(Debug)]
-    struct Projection {
-        input: Option<Box<Node>>,
-        distinct: bool,
-        targets: Vec<TargetElem>,
-    }
-
-    #[derive(Debug)]
-    struct JoinItem {
-        join_type: JoinType,
-        node: Node,
-        cond: Option<Expr>,
-    }
-
-    #[derive(Debug)]
-    struct Join {
-        join_type: JoinType,
-        left: Box<Node>,
-        right: Box<Node>,
-        cond: Option<Expr>,
     }
 
     #[derive(Debug)]

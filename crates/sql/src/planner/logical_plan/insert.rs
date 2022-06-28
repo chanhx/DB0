@@ -2,7 +2,7 @@ use crate::{
     catalog::DatabaseCatalog,
     error::{Error, Result},
     parser::ast::{Identifier, InsertSource},
-    planner::{Insert, Node, Planner},
+    planner::{Insert, Node, PhysicalNode, Planner},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
@@ -28,10 +28,10 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
             }
         };
 
-        Ok(Node::Insert(Insert {
+        Ok(Node::Physical(PhysicalNode::Insert(Insert {
             table_id,
             columns,
             values,
-        }))
+        })))
     }
 }

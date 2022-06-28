@@ -1,37 +1,43 @@
 mod join;
+mod plan;
 mod scan;
+
+pub use plan::{Join, PhysicalNode};
 
 use crate::{
     catalog::DatabaseCatalog,
-    planner::{Node, Planner},
+    planner::{logical_plan::LogicalNode, Planner},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn decide_physical_plan(&self, node: Node) -> Node {
+    pub fn decide_physical_plan(&self, node: LogicalNode) -> PhysicalNode {
         match node {
-            Node::LogicalJoin {
+            LogicalNode::Scan(scan) => self.decide_scan_plan(scan),
+
+            LogicalNode::Join {
                 initial_node,
                 joined_nodes,
             } => self.decide_join_plan(*initial_node, joined_nodes),
 
-            Node::LogicalScan(scan) => self.decide_scan_plan(scan),
+            LogicalNode::Filter { input, predict } => {
+                let input = input.map(|input| Box::new(self.decide_physical_plan(*input)));
 
-            Node::Projection(mut projection) => {
-                projection.input = projection
-                    .input
-                    .map(|input| Box::new(self.decide_physical_plan(*input)));
-
-                Node::Projection(projection)
-            }
-            Node::Filter(mut filter) => {
-                filter.input = filter
-                    .input
-                    .map(|input| Box::new(self.decide_physical_plan(*input)));
-
-                Node::Filter(filter)
+                PhysicalNode::Filter { input, predict }
             }
 
-            other => other,
+            LogicalNode::Projection {
+                input,
+                distinct,
+                targets,
+            } => {
+                let input = input.map(|input| Box::new(self.decide_physical_plan(*input)));
+
+                PhysicalNode::Projection {
+                    input,
+                    distinct,
+                    targets,
+                }
+            }
         }
     }
 }
