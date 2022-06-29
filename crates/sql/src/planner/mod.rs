@@ -1,14 +1,16 @@
 mod logical_plan;
 mod physical_plan;
 
+pub use physical_plan::PhysicalNode;
+
 use {
     crate::{
         catalog::{DatabaseCatalog, TableId},
         common::macros::pub_fields_struct,
-        parser::ast::Expr,
+        error::Result,
+        parser::ast::{Expr, Stmt},
     },
-    logical_plan::LogicalNode,
-    physical_plan::PhysicalNode,
+    logical_plan::Node,
 };
 
 pub struct Planner<'a, D: DatabaseCatalog> {
@@ -23,12 +25,11 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
     pub fn db_catalog(&self) -> &D {
         self.db_catalog
     }
-}
 
-#[derive(Debug)]
-pub enum Node {
-    Logical(LogicalNode),
-    Physical(PhysicalNode),
+    pub fn build_execution_plan(&self, stmt: Stmt) -> Result<PhysicalNode> {
+        let node = self.build_node(stmt)?;
+        Ok(self.decide_physical_plan(node))
+    }
 }
 
 pub_fields_struct! {

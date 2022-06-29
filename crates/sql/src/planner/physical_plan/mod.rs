@@ -6,26 +6,28 @@ pub use plan::{Join, PhysicalNode};
 
 use crate::{
     catalog::DatabaseCatalog,
-    planner::{logical_plan::LogicalNode, Planner},
+    planner::{Node, Planner},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn decide_physical_plan(&self, node: LogicalNode) -> PhysicalNode {
+    pub(super) fn decide_physical_plan(&self, node: Node) -> PhysicalNode {
         match node {
-            LogicalNode::Scan(scan) => self.decide_scan_plan(scan),
+            Node::Physical(node) => node,
 
-            LogicalNode::Join {
+            Node::Scan(scan) => self.decide_scan_plan(scan),
+
+            Node::Join {
                 initial_node,
                 joined_nodes,
             } => self.decide_join_plan(*initial_node, joined_nodes),
 
-            LogicalNode::Filter { input, predict } => {
+            Node::Filter { input, predict } => {
                 let input = input.map(|input| Box::new(self.decide_physical_plan(*input)));
 
                 PhysicalNode::Filter { input, predict }
             }
 
-            LogicalNode::Projection {
+            Node::Projection {
                 input,
                 distinct,
                 targets,

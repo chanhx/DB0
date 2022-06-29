@@ -1,12 +1,15 @@
-use crate::{
-    catalog::DatabaseCatalog,
-    error::{Error, Result},
-    parser::ast::{Identifier, InsertSource},
-    planner::{Insert, Node, PhysicalNode, Planner},
+use {
+    super::Node,
+    crate::{
+        catalog::DatabaseCatalog,
+        error::{Error, Result},
+        parser::ast::{Identifier, InsertSource},
+        planner::{Insert, PhysicalNode, Planner},
+    },
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn build_insert(
+    pub(super) fn build_insert(
         &self,
         table: String,
         columns: Option<Vec<Identifier>>,

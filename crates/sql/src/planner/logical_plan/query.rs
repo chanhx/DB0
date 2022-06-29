@@ -1,5 +1,5 @@
 use {
-    super::{JoinItem, LogicalNode},
+    super::{JoinItem, Node},
     crate::{
         catalog::{DatabaseCatalog, TableSchema},
         error::{Error, Result},
@@ -10,7 +10,7 @@ use {
 };
 
 impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn build_query_plan(&self, query: Query) -> Result<LogicalNode> {
+    pub fn build_query_plan(&self, query: Query) -> Result<Node> {
         let mut scope = Scope::default();
 
         let node = query
@@ -26,7 +26,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
         build_projection(&mut scope, query.distinct, query.targets, node)
     }
 
-    fn build_from_clause(&'a self, scope: &mut Scope<'b>, from: SelectFrom) -> Result<LogicalNode> {
+    fn build_from_clause(&'a self, scope: &mut Scope<'b>, from: SelectFrom) -> Result<Node> {
         let node = self.build_scan(scope, from.item)?;
 
         let joined_nodes = from
@@ -42,7 +42,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(if joined_nodes.len() > 0 {
-            LogicalNode::Join {
+            Node::Join {
                 initial_node: Box::new(node),
                 joined_nodes,
             }
@@ -51,7 +51,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
         })
     }
 
-    fn build_scan(&'a self, scope: &mut Scope<'b>, item: FromItem) -> Result<LogicalNode> {
+    fn build_scan(&'a self, scope: &mut Scope<'b>, item: FromItem) -> Result<Node> {
         Ok(match item {
             FromItem::Table { name, alias } => {
                 let catalog = self.db_catalog();
@@ -67,7 +67,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
                     scope.table_aliases.insert(alias.0, table);
                 }
 
-                LogicalNode::Scan(Scan {
+                Node::Scan(Scan {
                     table_id,
                     projection: None,
                 })
@@ -77,8 +77,8 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
     }
 }
 
-fn build_filter(predict: Expr, input: Option<LogicalNode>) -> Result<LogicalNode> {
-    Ok(LogicalNode::Filter {
+fn build_filter(predict: Expr, input: Option<Node>) -> Result<Node> {
+    Ok(Node::Filter {
         input: input.map(|input| Box::new(input)),
         predict,
     })
@@ -88,9 +88,9 @@ fn build_projection<'a>(
     _scope: &mut Scope<'a>,
     distinct: bool,
     targets: Vec<TargetElem>,
-    input: Option<LogicalNode>,
-) -> Result<LogicalNode> {
-    Ok(LogicalNode::Projection {
+    input: Option<Node>,
+) -> Result<Node> {
+    Ok(Node::Projection {
         input: input.map(|input| Box::new(input)),
         distinct,
         targets,

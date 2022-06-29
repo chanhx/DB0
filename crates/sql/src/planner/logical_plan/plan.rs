@@ -1,22 +1,24 @@
 use crate::{
     common::{macros::pub_fields_struct, JoinType},
     parser::ast::{Expr, TargetElem},
-    planner::Scan,
+    planner::{PhysicalNode, Scan},
 };
 
 #[derive(Debug)]
-pub enum LogicalNode {
+pub enum Node {
+    Physical(PhysicalNode),
+
     Scan(Scan),
     Join {
-        initial_node: Box<LogicalNode>,
+        initial_node: Box<Node>,
         joined_nodes: Vec<JoinItem>,
     },
     Filter {
-        input: Option<Box<LogicalNode>>,
+        input: Option<Box<Node>>,
         predict: Expr,
     },
     Projection {
-        input: Option<Box<LogicalNode>>,
+        input: Option<Box<Node>>,
         distinct: bool,
         targets: Vec<TargetElem>,
     },
@@ -26,7 +28,7 @@ pub_fields_struct! {
     #[derive(Debug)]
     struct JoinItem {
         join_type: JoinType,
-        node: LogicalNode,
+        node: Node,
         cond: Option<Expr>,
     }
 }

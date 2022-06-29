@@ -3,20 +3,20 @@ mod insert;
 mod plan;
 mod query;
 
-pub use plan::{JoinItem, LogicalNode};
+pub use plan::{JoinItem, Node};
 
 use {
     crate::{
         catalog::DatabaseCatalog,
         error::{Error, Result},
         parser::ast::Stmt,
-        planner::{Node, PhysicalNode, Planner},
+        planner::{PhysicalNode, Planner},
     },
     create_table::build_table_schema,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn build_node(&self, stmt: Stmt) -> Result<Node> {
+    pub(super) fn build_node(&self, stmt: Stmt) -> Result<Node> {
         Ok(match stmt {
             Stmt::CreateDatabase {
                 if_not_exists,
@@ -37,7 +37,7 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
                 schema: build_table_schema(name.0, columns, constraints)?,
             }),
 
-            Stmt::Select(query) => Node::Logical(self.build_query_plan(query)?),
+            Stmt::Select(query) => self.build_query_plan(query)?,
 
             Stmt::Insert {
                 table,
