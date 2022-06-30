@@ -3,5 +3,20 @@
 version = 3
 
 [[package]]
+name = "common"
+version = "0.1.0"
+
+[[package]]
+name = "def"
+version = "0.1.0"
+dependencies = [
+ "common",
+]
+
+[[package]]
 name = "sql"
 version = "0.1.0"
+dependencies = [
+ "common",
+ "def",
+]

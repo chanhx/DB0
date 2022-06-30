@@ -1,7 +1,4 @@
-use {
-    super::{table_schema::TableSchema, TableId},
-    crate::error::Result,
-};
+use super::{error::Result, table_schema::TableSchema, TableId};
 
 pub trait DatabaseCatalog {
     fn create_table(&mut self, table: TableSchema) -> Result<TableId>;

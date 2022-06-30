@@ -1,9 +1,7 @@
 use {
     super::PhysicalNode,
-    crate::{
-        catalog::DatabaseCatalog,
-        planner::{Planner, Scan},
-    },
+    crate::planner::{Planner, Scan},
+    def::catalog::DatabaseCatalog,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

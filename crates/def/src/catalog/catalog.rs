@@ -1,7 +1,4 @@
-use {
-    super::{database_catalog::DatabaseCatalog, DatabaseId},
-    crate::error::Result,
-};
+use super::{database_catalog::DatabaseCatalog, error::Result, DatabaseId};
 
 pub trait Catalog {
     fn create_database(&mut self, name: &str) -> Result<DatabaseId>;

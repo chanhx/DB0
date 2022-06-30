@@ -1,10 +1,10 @@
 use {
     crate::{
-        catalog::{Column, TableSchema, UniqueConstraint},
         common::{Span, Spanned},
         error::{Error, Result},
         parser::ast::{self, ColumnConstraint, Identifier, TableConstraint},
     },
+    def::catalog::{Column, TableSchema, UniqueConstraint},
     std::collections::HashSet,
 };
 

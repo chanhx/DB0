@@ -5,11 +5,11 @@ pub use physical_plan::PhysicalNode;
 
 use {
     crate::{
-        catalog::{DatabaseCatalog, TableId},
-        common::macros::pub_fields_struct,
         error::Result,
         parser::ast::{Expr, Stmt},
     },
+    common::pub_fields_struct,
+    def::catalog::{DatabaseCatalog, TableId},
     logical_plan::Node,
 };
 

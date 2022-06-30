@@ -1,6 +1,7 @@
 use {
     super::{Expr, Identifier},
-    crate::common::{macros, JoinType},
+    common::pub_fields_struct,
+    def::JoinType,
 };
 
 #[derive(Debug, PartialEq)]
@@ -27,7 +28,7 @@ pub enum InsertSource {
     FromQuery(Box<Query>),
 }
 
-macros::pub_fields_struct! {
+pub_fields_struct! {
     #[derive(Debug, PartialEq)]
     struct Query {
         distinct: bool,

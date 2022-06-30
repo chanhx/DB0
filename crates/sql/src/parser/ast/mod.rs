@@ -2,7 +2,7 @@ mod common;
 mod dml;
 mod expr;
 
-pub(crate) use {common::*, dml::*, expr::*};
+pub(crate) use self::{common::*, dml::*, expr::*};
 
 use crate::common::Spanned;
 

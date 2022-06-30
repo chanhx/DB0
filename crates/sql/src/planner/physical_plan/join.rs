@@ -1,9 +1,7 @@
 use {
     super::{Join, PhysicalNode},
-    crate::{
-        catalog::DatabaseCatalog,
-        planner::{logical_plan::JoinItem, Node, Planner},
-    },
+    crate::planner::{logical_plan::JoinItem, Node, Planner},
+    def::catalog::DatabaseCatalog,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

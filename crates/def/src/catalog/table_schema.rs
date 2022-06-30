@@ -1,4 +1,4 @@
-use crate::common::{macros::pub_fields_struct, DataType};
+use {crate::data_type::DataType, common::pub_fields_struct};
 
 pub_fields_struct! {
     #[derive(Debug)]

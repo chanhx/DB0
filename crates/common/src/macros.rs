@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! pub_fields_struct {
     {
         $(
@@ -15,5 +16,3 @@ macro_rules! pub_fields_struct {
         )*
     }
 }
-
-pub(crate) use pub_fields_struct;

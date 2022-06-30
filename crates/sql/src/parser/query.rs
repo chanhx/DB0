@@ -5,10 +5,10 @@ use {
         Parser,
     },
     crate::{
-        common::JoinType,
         error::{Error, Result},
         lexer::{Keyword, Token},
     },
+    def::JoinType,
 };
 
 impl<'a> Parser<'a> {

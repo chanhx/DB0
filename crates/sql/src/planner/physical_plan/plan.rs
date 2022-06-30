@@ -1,8 +1,10 @@
-use crate::{
-    catalog::TableSchema,
-    common::{macros::pub_fields_struct, JoinType},
-    parser::ast::{Expr, TargetElem},
-    planner::{Insert, Scan},
+use {
+    crate::{
+        parser::ast::{Expr, TargetElem},
+        planner::{Insert, Scan},
+    },
+    common::pub_fields_struct,
+    def::{catalog::TableSchema, JoinType},
 };
 
 #[derive(Debug)]

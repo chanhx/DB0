@@ -6,12 +6,12 @@ mod insert;
 mod query;
 
 use {
+    self::ast::Stmt,
     crate::{
         common::iter::{MultiPeek, MultiPeekable},
         error::{Error, Result},
         lexer::{Keyword, Lexer, Token},
     },
-    ast::Stmt,
 };
 
 pub struct Parser<'a> {
@@ -61,11 +61,13 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        common::DataType,
-        error::Result,
-        parser::ast::{identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint},
+    use {
+        super::*,
+        crate::{
+            error::Result,
+            parser::ast::{identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint},
+        },
+        def::DataType,
     };
 
     #[test]

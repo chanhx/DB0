@@ -1,11 +1,12 @@
 use {
     super::{ast::Identifier, Parser},
     crate::{
-        common::{DataType, Span, Spanned},
+        common::{Span, Spanned},
         error::{Error, Result},
         lexer::{Keyword, Token},
     },
     core::str::FromStr,
+    def::DataType,
 };
 
 impl<'a> Parser<'a> {

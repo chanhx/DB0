@@ -4,9 +4,9 @@ mod scan;
 
 pub use plan::{Join, PhysicalNode};
 
-use crate::{
-    catalog::DatabaseCatalog,
-    planner::{Node, Planner},
+use {
+    crate::planner::{Node, Planner},
+    def::catalog::DatabaseCatalog,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

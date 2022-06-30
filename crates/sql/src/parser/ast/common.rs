@@ -1,6 +1,8 @@
 use {
     super::Expr,
-    crate::common::{macros, DataType, Span, Spanned},
+    crate::common::{Span, Spanned},
+    common::pub_fields_struct,
+    def::DataType,
 };
 
 #[derive(Debug)]
@@ -37,7 +39,7 @@ pub enum TableConstraint {
     PrimaryKey(Vec<Identifier>),
 }
 
-macros::pub_fields_struct! {
+pub_fields_struct! {
     #[derive(Debug, PartialEq)]
     struct Column {
         name: Identifier,

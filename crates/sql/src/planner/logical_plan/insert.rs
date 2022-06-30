@@ -1,11 +1,11 @@
 use {
     super::Node,
     crate::{
-        catalog::DatabaseCatalog,
         error::{Error, Result},
         parser::ast::{Identifier, InsertSource},
         planner::{Insert, PhysicalNode, Planner},
     },
+    def::catalog::DatabaseCatalog,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

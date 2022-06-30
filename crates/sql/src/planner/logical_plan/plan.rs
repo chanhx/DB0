@@ -1,7 +1,10 @@
-use crate::{
-    common::{macros::pub_fields_struct, JoinType},
-    parser::ast::{Expr, TargetElem},
-    planner::{PhysicalNode, Scan},
+use {
+    crate::{
+        parser::ast::{Expr, TargetElem},
+        planner::{PhysicalNode, Scan},
+    },
+    common::pub_fields_struct,
+    def::JoinType,
 };
 
 #[derive(Debug)]

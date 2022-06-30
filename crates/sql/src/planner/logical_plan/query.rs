@@ -1,11 +1,11 @@
 use {
     super::{JoinItem, Node},
     crate::{
-        catalog::{DatabaseCatalog, TableSchema},
         error::{Error, Result},
         parser::ast::{Expr, FromItem, Query, SelectFrom, TargetElem},
         planner::{Planner, Scan},
     },
+    def::catalog::{DatabaseCatalog, TableSchema},
     std::collections::HashMap,
 };
 
@@ -60,7 +60,12 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
                     .ok_or(Error::RelationNotExist {
                         name: name.to_string(),
                     })?;
-                let table = catalog.get_table_schema(table_id)?;
+                let table =
+                    catalog
+                        .get_table_schema(table_id)
+                        .map_err(|_| Error::RelationNotExist {
+                            name: name.to_string(),
+                        })?;
 
                 scope.tables.insert(name.to_string(), table);
                 if let Some(alias) = alias {
