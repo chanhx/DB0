@@ -2,12 +2,10 @@ use {
     super::{
         ast::{Expr, FromItem, JoinItem, Query, SelectFrom, TargetElem},
         common::match_token,
+        error::{Error, Result},
         Parser,
     },
-    crate::{
-        error::{Error, Result},
-        lexer::{Keyword, Token},
-    },
+    crate::lexer::{Keyword, Token},
     def::JoinType,
 };
 

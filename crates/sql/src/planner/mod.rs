@@ -1,13 +1,14 @@
+mod error;
 mod logical_plan;
 mod physical_plan;
 
-pub use physical_plan::PhysicalNode;
+pub use {
+    error::{Error, Result},
+    physical_plan::PhysicalNode,
+};
 
 use {
-    crate::{
-        error::Result,
-        parser::ast::{Expr, Stmt},
-    },
+    crate::parser::ast::{Expr, Stmt},
     common::pub_fields_struct,
     def::catalog::{DatabaseCatalog, TableId},
     logical_plan::Node,

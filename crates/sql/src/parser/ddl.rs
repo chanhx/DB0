@@ -2,11 +2,11 @@ use {
     super::{
         ast::{Column, ColumnConstraint, Stmt, TableConstraint},
         common::match_token,
+        error::{Error, Result},
         Parser,
     },
     crate::{
         common::Spanned,
-        error::{Error, Result},
         lexer::{Keyword, Token},
     },
 };

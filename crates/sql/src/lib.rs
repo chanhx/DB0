@@ -1,6 +1,5 @@
 mod common;
-mod error;
-mod lexer;
+pub mod lexer;
 pub mod parser;
 pub mod planner;
 

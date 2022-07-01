@@ -2,12 +2,10 @@ use {
     super::{
         ast::{ColumnRef, Expr, InfixOperator, Literal, Operator, PrefixOperator},
         common::match_token,
+        error::{Error, Result},
         Parser,
     },
-    crate::{
-        error::{Error, Result},
-        lexer::{Keyword, Token},
-    },
+    crate::lexer::{Keyword, Token},
 };
 
 impl<'a> Parser<'a> {

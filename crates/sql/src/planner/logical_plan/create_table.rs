@@ -1,9 +1,8 @@
 use {
     crate::{
         common::{Span, Spanned},
-        error::{Error, Result},
         parser::ast::{self, ColumnConstraint, Identifier, TableConstraint},
-        planner::physical_plan::CreateTable,
+        planner::{physical_plan::CreateTable, Error, Result},
     },
     def::catalog::{ColumnDef, UniqueConstraint},
     std::collections::HashSet,

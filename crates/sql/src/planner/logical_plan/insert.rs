@@ -1,9 +1,8 @@
 use {
     super::Node,
     crate::{
-        error::{Error, Result},
         parser::ast::{Identifier, InsertSource},
-        planner::{Insert, PhysicalNode, Planner},
+        planner::{Error, Insert, PhysicalNode, Planner, Result},
     },
     def::catalog::{DatabaseCatalog, Table},
 };

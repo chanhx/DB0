@@ -1,8 +1,11 @@
 use {
-    super::{ast::Identifier, Parser},
+    super::{
+        ast::Identifier,
+        error::{Error, Result},
+        Parser,
+    },
     crate::{
         common::{Span, Spanned},
-        error::{Error, Result},
         lexer::{Keyword, Token},
     },
     core::str::FromStr,
@@ -156,7 +159,7 @@ macro_rules! match_token {
             $( $( Some(Ok($t)) )|* $(if $cond)? => $e,)*
 
             Some(Ok((_, span))) => return Err(Error::SyntaxError(span)),
-            Some(Err(e)) => return Err(e),
+            Some(Err(e)) => return Err(Error::LexingError(e)),
             None => return Err(Error::UnexpectedEnd),
         }
     };

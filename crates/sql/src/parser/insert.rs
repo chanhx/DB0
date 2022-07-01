@@ -2,12 +2,10 @@ use {
     super::{
         ast::{InsertSource, Stmt},
         common::match_token,
+        error::{Error, Result},
         Parser,
     },
-    crate::{
-        error::{Error, Result},
-        lexer::{Keyword, Token},
-    },
+    crate::lexer::{Keyword, Token},
 };
 
 impl<'a> Parser<'a> {

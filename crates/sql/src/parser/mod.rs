@@ -1,15 +1,17 @@
 pub mod ast;
 mod common;
 mod ddl;
+mod error;
 mod expr;
 mod insert;
 mod query;
+
+pub use self::error::{Error, Result};
 
 use {
     self::ast::Stmt,
     crate::{
         common::iter::{MultiPeek, MultiPeekable},
-        error::{Error, Result},
         lexer::{Keyword, Lexer, Token},
     },
 };
@@ -54,7 +56,7 @@ impl<'a> Parser<'a> {
                 self.parse_select().map(|select| Stmt::Select(select))
             }
             Ok((_, span)) => Err(Error::SyntaxError(span)),
-            Err(e) => Err(e),
+            Err(e) => Err(Error::LexingError(e)),
         })
     }
 }
@@ -63,9 +65,8 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::{
-            error::Result,
-            parser::ast::{identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint},
+        crate::parser::ast::{
+            identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint,
         },
         def::DataType,
     };

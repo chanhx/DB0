@@ -6,8 +6,8 @@ mod query;
 pub use plan::{JoinItem, Node};
 
 use {
+    super::error::{Error, Result},
     crate::{
-        error::{Error, Result},
         parser::ast::Stmt,
         planner::{PhysicalNode, Planner},
     },

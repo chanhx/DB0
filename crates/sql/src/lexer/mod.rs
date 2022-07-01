@@ -1,12 +1,13 @@
+mod error;
 mod token;
 
-pub(crate) use token::{Keyword, Token};
+pub(crate) use self::{
+    error::{Error, Result},
+    token::{Keyword, Token},
+};
 
 use {
-    crate::{
-        common::Spanned,
-        error::{Error, Result},
-    },
+    crate::common::Spanned,
     std::{
         iter::Peekable,
         str::{CharIndices, FromStr},
