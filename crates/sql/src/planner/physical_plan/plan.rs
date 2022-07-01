@@ -4,7 +4,10 @@ use {
         planner::{Insert, Scan},
     },
     common::pub_fields_struct,
-    def::{catalog::TableSchema, JoinType},
+    def::{
+        catalog::{ColumnDef, UniqueConstraint},
+        JoinType,
+    },
 };
 
 #[derive(Debug)]
@@ -13,10 +16,7 @@ pub enum PhysicalNode {
         if_not_exists: bool,
         name: String,
     },
-    CreateTable {
-        if_not_exists: bool,
-        schema: TableSchema,
-    },
+    CreateTable(CreateTable),
 
     SeqScan(Scan),
     IndexScan(Scan),
@@ -40,6 +40,15 @@ pub enum PhysicalNode {
 }
 
 pub_fields_struct! {
+    #[derive(Debug)]
+    struct CreateTable {
+        if_not_exists: bool,
+        name: String,
+        columns: Vec<ColumnDef>,
+        primary_key_columns: Option<Vec<String>>,
+        unique_contraints: Vec<UniqueConstraint>,
+    }
+
     #[derive(Debug)]
     struct Join {
         join_type: JoinType,

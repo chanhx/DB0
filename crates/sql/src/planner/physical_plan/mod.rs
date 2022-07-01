@@ -2,7 +2,7 @@ mod join;
 mod plan;
 mod scan;
 
-pub use plan::{Join, PhysicalNode};
+pub use self::plan::*;
 
 use {
     crate::planner::{Node, Planner},

@@ -5,13 +5,13 @@ use {
         parser::ast::{Expr, FromItem, Query, SelectFrom, TargetElem},
         planner::{Planner, Scan},
     },
-    def::catalog::{DatabaseCatalog, TableSchema},
+    def::catalog::{DatabaseCatalog, Table},
     std::collections::HashMap,
 };
 
 impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
     pub fn build_query_plan(&self, query: Query) -> Result<Node> {
-        let mut scope = Scope::default();
+        let mut scope = Scope::<'b, D::T>::new();
 
         let node = query
             .from
@@ -26,7 +26,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
         build_projection(&mut scope, query.distinct, query.targets, node)
     }
 
-    fn build_from_clause(&'a self, scope: &mut Scope<'b>, from: SelectFrom) -> Result<Node> {
+    fn build_from_clause(&'a self, scope: &mut Scope<'b, D::T>, from: SelectFrom) -> Result<Node> {
         let node = self.build_scan(scope, from.item)?;
 
         let joined_nodes = from
@@ -51,21 +51,15 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
         })
     }
 
-    fn build_scan(&'a self, scope: &mut Scope<'b>, item: FromItem) -> Result<Node> {
+    fn build_scan(&'a self, scope: &mut Scope<'b, D::T>, item: FromItem) -> Result<Node> {
         Ok(match item {
             FromItem::Table { name, alias } => {
                 let catalog = self.db_catalog();
-                let table_id = catalog
-                    .get_table_id(&name.0)
-                    .ok_or(Error::RelationNotExist {
+                let table = catalog
+                    .get_table(&name.0)
+                    .map_err(|_| Error::RelationNotExist {
                         name: name.to_string(),
                     })?;
-                let table =
-                    catalog
-                        .get_table_schema(table_id)
-                        .map_err(|_| Error::RelationNotExist {
-                            name: name.to_string(),
-                        })?;
 
                 scope.tables.insert(name.to_string(), table);
                 if let Some(alias) = alias {
@@ -73,7 +67,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
                 }
 
                 Node::Scan(Scan {
-                    table_id,
+                    table_id: table.id(),
                     projection: None,
                 })
             }
@@ -89,8 +83,8 @@ fn build_filter(predict: Expr, input: Option<Node>) -> Result<Node> {
     })
 }
 
-fn build_projection<'a>(
-    _scope: &mut Scope<'a>,
+fn build_projection<'a, T: Table>(
+    _scope: &mut Scope<'a, T>,
     distinct: bool,
     targets: Vec<TargetElem>,
     input: Option<Node>,
@@ -103,7 +97,16 @@ fn build_projection<'a>(
 }
 
 #[derive(Default)]
-struct Scope<'a> {
-    table_aliases: HashMap<String, &'a TableSchema>,
-    tables: HashMap<String, &'a TableSchema>,
+struct Scope<'a, T: Table> {
+    table_aliases: HashMap<String, &'a T>,
+    tables: HashMap<String, &'a T>,
+}
+
+impl<'a, T: Table> Scope<'a, T> {
+    fn new() -> Self {
+        Self {
+            table_aliases: HashMap::new(),
+            tables: HashMap::new(),
+        }
+    }
 }

@@ -11,7 +11,7 @@ use {
         parser::ast::Stmt,
         planner::{PhysicalNode, Planner},
     },
-    create_table::build_table_schema,
+    create_table::build_create_table_plan,
     def::catalog::DatabaseCatalog,
 };
 
@@ -32,10 +32,9 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
                 columns,
                 constraints,
                 from_query,
-            } if from_query.is_none() => Node::Physical(PhysicalNode::CreateTable {
-                if_not_exists,
-                schema: build_table_schema(name.0, columns, constraints)?,
-            }),
+            } if from_query.is_none() => Node::Physical(PhysicalNode::CreateTable(
+                build_create_table_plan(if_not_exists, name.0, columns, constraints)?,
+            )),
 
             Stmt::Select(query) => self.build_query_plan(query)?,
 

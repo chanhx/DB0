@@ -1,13 +1,13 @@
 mod catalog;
 mod database_catalog;
 mod error;
-mod table_schema;
+mod table;
 
 pub use {
     catalog::Catalog,
-    database_catalog::DatabaseCatalog,
+    database_catalog::{ColumnDef, CreateTableArgs, DatabaseCatalog, UniqueConstraint},
     error::{Error, Result},
-    table_schema::{Column, TableSchema, UniqueConstraint},
+    table::Table,
 };
 
 pub type DatabaseId = u32;

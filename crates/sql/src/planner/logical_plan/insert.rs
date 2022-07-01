@@ -5,7 +5,7 @@ use {
         parser::ast::{Identifier, InsertSource},
         planner::{Insert, PhysicalNode, Planner},
     },
-    def::catalog::DatabaseCatalog,
+    def::catalog::{DatabaseCatalog, Table},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
@@ -16,9 +16,9 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
         source: InsertSource,
     ) -> Result<Node> {
         let catalog = self.db_catalog();
-        let table_id = catalog
-            .get_table_id(&table)
-            .ok_or(Error::RelationNotExist { name: table })?;
+        let table = catalog
+            .get_table(&table)
+            .map_err(|_| Error::RelationNotExist { name: table })?;
 
         // TODO need to validate the arguments
         let columns = columns.map(|v| v.into_iter().map(|id| id.0).collect());
@@ -32,7 +32,7 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
         };
 
         Ok(Node::Physical(PhysicalNode::Insert(Insert {
-            table_id,
+            table_id: table.id(),
             columns,
             values,
         })))

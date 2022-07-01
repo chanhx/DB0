@@ -3,16 +3,18 @@ use {
         common::{Span, Spanned},
         error::{Error, Result},
         parser::ast::{self, ColumnConstraint, Identifier, TableConstraint},
+        planner::physical_plan::CreateTable,
     },
-    def::catalog::{Column, TableSchema, UniqueConstraint},
+    def::catalog::{ColumnDef, UniqueConstraint},
     std::collections::HashSet,
 };
 
-pub fn build_table_schema(
+pub fn build_create_table_plan(
+    if_not_exists: bool,
     name: String,
     ast_columns: Vec<ast::Column>,
     constraints: Vec<Spanned<TableConstraint>>,
-) -> Result<TableSchema> {
+) -> Result<CreateTable> {
     let mut ids = HashSet::new();
 
     let mut columns = vec![];
@@ -46,10 +48,11 @@ pub fn build_table_schema(
             }
         }
 
-        columns.push(Column {
+        columns.push(ColumnDef {
             name: id.to_string(),
             data_type: column.data_type,
             is_nullable,
+            comment: None,
         });
     }
 
@@ -79,7 +82,8 @@ pub fn build_table_schema(
         }
     }
 
-    Ok(TableSchema {
+    Ok(CreateTable {
+        if_not_exists,
         name,
         columns,
         primary_key_columns,
