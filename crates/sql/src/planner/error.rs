@@ -8,7 +8,8 @@ pub enum Error {
     Internal(String),
     MultiplePrimaryKey { span: Span, details: String },
     UndefinedColumn { span: Span, details: String },
-    RelationNotExist { name: String },
+    ColumnNotExists { name: String, span: Span },
+    RelationNotExists { name: String },
 }
 
 impl std::error::Error for Error {}
@@ -23,7 +24,8 @@ impl std::fmt::Display for Error {
                 Self::Internal(details) => details.clone(),
                 Self::MultiplePrimaryKey { details, .. } => details.clone(),
                 Self::UndefinedColumn { details, .. } => details.clone(),
-                Self::RelationNotExist { name } => format!("relation {} does not exists", name),
+                Self::ColumnNotExists { name, .. } => format!("columen {} does not exists", name),
+                Self::RelationNotExists { name } => format!("relation {} does not exists", name),
             }
         )
     }

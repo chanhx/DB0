@@ -10,7 +10,7 @@ pub use {
 use {
     crate::parser::ast::{Expr, Stmt},
     common::pub_fields_struct,
-    def::catalog::{DatabaseCatalog, TableId},
+    def::catalog::{ColumnId, DatabaseCatalog, TableId},
     logical_plan::Node,
 };
 
@@ -45,7 +45,7 @@ pub_fields_struct! {
     struct Insert {
         table_id: TableId,
         // TODO: use ColumnId
-        columns: Option<Vec<String>>,
+        columns: Option<Vec<ColumnId>>,
         values: Vec<Vec<Expr>>,
     }
 }

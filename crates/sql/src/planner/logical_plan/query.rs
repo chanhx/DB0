@@ -56,7 +56,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
                 let catalog = self.db_catalog();
                 let table = catalog
                     .get_table(&name.0)
-                    .map_err(|_| Error::RelationNotExist {
+                    .map_err(|_| Error::RelationNotExists {
                         name: name.to_string(),
                     })?;
 
