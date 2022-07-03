@@ -1,6 +1,6 @@
 use {
     super::{ColumnId, Result, TableId},
-    crate::data_type::DataType,
+    crate::DataType,
     common::pub_fields_struct,
 };
 
