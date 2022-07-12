@@ -20,3 +20,10 @@ dependencies = [
  "common",
  "def",
 ]
+
+[[package]]
+name = "storage"
+version = "0.1.0"
+dependencies = [
+ "common",
+]
