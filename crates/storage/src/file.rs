@@ -64,8 +64,7 @@ mod tests {
 
     #[test]
     fn write_and_read() -> Result<()> {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.into_temp_path();
+        let path = NamedTempFile::new().unwrap().into_temp_path();
         let file_name = path.file_name().unwrap();
 
         let mut manager = FileManager::new(&path.parent().unwrap())?;
