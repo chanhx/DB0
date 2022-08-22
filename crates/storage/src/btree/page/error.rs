@@ -2,9 +2,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
-    IndexOutOfRange {
-        index: usize,
-    },
     IO {
         source: std::io::Error,
     },
@@ -12,7 +9,8 @@ pub enum Error {
         details: String,
         source: Option<Box<dyn std::error::Error>>,
     },
-    SpaceNotEnough,
+    InvalidPageType(u8),
+    KeyAlreadyExists,
 }
 
 impl std::error::Error for Error {}
@@ -23,7 +21,6 @@ impl std::fmt::Display for Error {
             f,
             "{}",
             match self {
-                Self::IndexOutOfRange { index } => format!("index {} out of range", index),
                 Self::IO { source } => format!("IO error: {}", source),
                 Self::Internal { details, source } => {
                     format!(
@@ -35,7 +32,8 @@ impl std::fmt::Display for Error {
                         }
                     )
                 }
-                Self::SpaceNotEnough => format!("space is not enough for insertion"),
+                Self::InvalidPageType(ty) => format!("invalid page type {}", ty),
+                Self::KeyAlreadyExists => "key already exists".to_string(),
             }
         )
     }
