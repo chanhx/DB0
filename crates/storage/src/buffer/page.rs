@@ -1,11 +1,8 @@
-use {
-    crate::{PageId, PAGE_SIZE},
-    std::path::PathBuf,
-};
+use crate::{PageId, PAGE_SIZE};
 
 #[derive(Debug, Clone)]
 #[repr(align(64))]
-pub(crate) struct PageData([u8; PAGE_SIZE]);
+struct PageData([u8; PAGE_SIZE]);
 
 #[derive(Debug, Clone)]
 pub(crate) struct Page {
@@ -16,16 +13,16 @@ pub(crate) struct Page {
 
 impl Default for Page {
     fn default() -> Self {
-        Self::new(0, PageData([0; PAGE_SIZE]))
+        Self::new(0, [0; PAGE_SIZE])
     }
 }
 
 impl Page {
-    pub fn new(id: PageId, data: PageData) -> Self {
+    pub fn new(id: PageId, data: [u8; PAGE_SIZE]) -> Self {
         Self {
             id,
-            data,
             is_dirty: false,
+            data: PageData(data),
         }
     }
 

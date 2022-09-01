@@ -10,4 +10,5 @@ bytemuck = "1.10"
 lru = "0.7"
 
 [dev-dependencies]
+rand = "0.8"
 tempfile = "3"

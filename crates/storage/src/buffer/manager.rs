@@ -103,7 +103,7 @@ impl<R: Replacer> BufferManager<R> {
         Ok(page)
     }
 
-    fn flush_page(&mut self, page_id: PageId) -> Result<()> {
+    pub(crate) fn flush_page(&mut self, page_id: PageId) -> Result<()> {
         let &frame_id = self.page_table.get(&page_id).ok_or(Error::Internal {
             details: "page is not in buffer".to_string(),
             source: None,
