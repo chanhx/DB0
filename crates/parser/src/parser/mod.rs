@@ -1,4 +1,3 @@
-pub mod ast;
 mod common;
 mod ddl;
 mod error;
@@ -8,12 +7,10 @@ mod query;
 
 pub use self::error::{Error, Result};
 
-use {
-    self::ast::Stmt,
-    crate::{
-        common::iter::{MultiPeek, MultiPeekable},
-        lexer::{Keyword, Lexer, Token},
-    },
+use crate::{
+    ast::Stmt,
+    common::{MultiPeek, MultiPeekable},
+    lexer::{Keyword, Lexer, Token},
 };
 
 pub struct Parser<'a> {
@@ -22,7 +19,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn new(src: &'a str) -> Self {
+    pub fn new(src: &'a str) -> Self {
         Self {
             src,
             tokens: Lexer::new(src).multi_peekable(),
@@ -65,9 +62,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::parser::ast::{
-            identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint,
-        },
+        crate::ast::{identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint},
         def::DataType,
     };
 

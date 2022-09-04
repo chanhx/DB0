@@ -1,10 +1,10 @@
 use {
     super::{
-        ast::Identifier,
         error::{Error, Result},
         Parser,
     },
     crate::{
+        ast::Identifier,
         common::{Span, Spanned},
         lexer::{Keyword, Token},
     },

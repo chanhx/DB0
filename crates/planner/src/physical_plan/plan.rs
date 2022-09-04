@@ -1,13 +1,11 @@
 use {
-    crate::{
-        parser::ast::{Expr, TargetElem},
-        planner::{Insert, Scan},
-    },
+    crate::{Insert, Scan},
     common::pub_fields_struct,
     def::{
         catalog::{ColumnDef, UniqueConstraint},
         JoinType,
     },
+    parser::ast::{Expr, TargetElem},
 };
 
 #[derive(Debug)]

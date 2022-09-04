@@ -1,6 +1,6 @@
 use {
     super::PhysicalNode,
-    crate::planner::{Planner, Scan},
+    crate::{Planner, Scan},
     def::catalog::DatabaseCatalog,
 };
 

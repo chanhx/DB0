@@ -1,6 +1,6 @@
 use {
     super::{Join, PhysicalNode},
-    crate::planner::{logical_plan::JoinItem, Node, Planner},
+    crate::{logical_plan::JoinItem, Node, Planner},
     def::catalog::DatabaseCatalog,
 };
 

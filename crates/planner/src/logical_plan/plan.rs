@@ -1,10 +1,8 @@
 use {
-    crate::{
-        parser::ast::{Expr, TargetElem},
-        planner::{PhysicalNode, Scan},
-    },
+    crate::{PhysicalNode, Scan},
     common::pub_fields_struct,
     def::JoinType,
+    parser::ast::{Expr, TargetElem},
 };
 
 #[derive(Debug)]

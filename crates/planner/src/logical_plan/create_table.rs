@@ -1,10 +1,10 @@
 use {
-    crate::{
-        common::{Span, Spanned},
-        parser::ast::{self, ColumnConstraint, Identifier, TableConstraint},
-        planner::{physical_plan::CreateTable, Error, Result},
-    },
+    crate::{physical_plan::CreateTable, Error, Result},
     def::catalog::{ColumnDef, UniqueConstraint},
+    parser::{
+        ast::{self, ColumnConstraint, Identifier, TableConstraint},
+        Span, Spanned,
+    },
     std::collections::HashSet,
 };
 

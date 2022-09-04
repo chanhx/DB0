@@ -1,11 +1,13 @@
 use {
     super::{
-        ast::{InsertSource, Stmt},
         common::match_token,
         error::{Error, Result},
         Parser,
     },
-    crate::lexer::{Keyword, Token},
+    crate::{
+        ast::{InsertSource, Stmt},
+        lexer::{Keyword, Token},
+    },
 };
 
 impl<'a> Parser<'a> {
@@ -51,7 +53,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::parser::ast::{
+        crate::ast::{
             identifier_from_str, ColumnRef, Expr, FromItem, Literal, Query, SelectFrom, TargetElem,
         },
     };

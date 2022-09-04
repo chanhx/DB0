@@ -1,11 +1,13 @@
 use {
     super::{
-        ast::{Expr, FromItem, JoinItem, Query, SelectFrom, TargetElem},
         common::match_token,
         error::{Error, Result},
         Parser,
     },
-    crate::lexer::{Keyword, Token},
+    crate::{
+        ast::{Expr, FromItem, JoinItem, Query, SelectFrom, TargetElem},
+        lexer::{Keyword, Token},
+    },
     def::JoinType,
 };
 
@@ -132,7 +134,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::parser::ast::{identifier_from_str, ColumnRef, Literal, Operation, Stmt},
+        crate::ast::{identifier_from_str, ColumnRef, Literal, Operation, Stmt},
     };
 
     #[test]

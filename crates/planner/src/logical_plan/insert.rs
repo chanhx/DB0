@@ -1,10 +1,8 @@
 use {
     super::Node,
-    crate::{
-        parser::ast::{Identifier, InsertSource},
-        planner::{Error, Insert, PhysicalNode, Planner, Result},
-    },
+    crate::{Error, Insert, PhysicalNode, Planner, Result},
     def::catalog::{DatabaseCatalog, Table},
+    parser::ast::{Identifier, InsertSource},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

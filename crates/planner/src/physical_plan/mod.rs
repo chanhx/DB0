@@ -5,7 +5,7 @@ mod scan;
 pub use self::plan::*;
 
 use {
-    crate::planner::{Node, Planner},
+    crate::{Node, Planner},
     def::catalog::DatabaseCatalog,
 };
 

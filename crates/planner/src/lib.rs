@@ -8,10 +8,10 @@ pub use {
 };
 
 use {
-    crate::parser::ast::{Expr, Stmt},
     common::pub_fields_struct,
     def::catalog::{ColumnId, DatabaseCatalog, TableId},
     logical_plan::Node,
+    parser::ast::{Expr, Stmt},
 };
 
 pub struct Planner<'a, D: DatabaseCatalog> {

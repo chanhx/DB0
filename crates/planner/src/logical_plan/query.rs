@@ -1,10 +1,8 @@
 use {
     super::{JoinItem, Node},
-    crate::{
-        parser::ast::{Expr, FromItem, Query, SelectFrom, TargetElem},
-        planner::{Error, Planner, Result, Scan},
-    },
+    crate::{Error, Planner, Result, Scan},
     def::catalog::{DatabaseCatalog, Table},
+    parser::ast::{Expr, FromItem, Query, SelectFrom, TargetElem},
     std::collections::HashMap,
 };
 

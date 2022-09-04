@@ -7,12 +7,10 @@ pub use plan::{JoinItem, Node};
 
 use {
     super::error::{Error, Result},
-    crate::{
-        parser::ast::Stmt,
-        planner::{PhysicalNode, Planner},
-    },
+    crate::{PhysicalNode, Planner},
     create_table::build_create_table_plan,
     def::catalog::DatabaseCatalog,
+    parser::ast::Stmt,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
