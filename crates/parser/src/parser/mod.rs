@@ -8,7 +8,7 @@ mod query;
 pub use self::error::{Error, Result};
 
 use crate::{
-    ast::Stmt,
+    ast::Statement,
     common::{MultiPeek, MultiPeekable},
     lexer::{Keyword, Lexer, Token},
 };
@@ -26,7 +26,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(sql: &'a str) -> Vec<Result<Stmt>> {
+    pub fn parse(sql: &'a str) -> Vec<Result<Statement>> {
         let mut parser = Self::new(sql);
 
         let mut stmts = Vec::new();
@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
         stmts
     }
 
-    fn parse_statement(&mut self) -> Option<Result<Stmt>> {
+    fn parse_statement(&mut self) -> Option<Result<Statement>> {
         self.skip_semicolons();
 
         Some(match self.tokens.next()? {
@@ -50,7 +50,7 @@ impl<'a> Parser<'a> {
             Ok((Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
             Ok((Token::Keyword(Keyword::INSERT), _)) => self.parse_insert(),
             Ok((Token::Keyword(Keyword::SELECT), _)) => {
-                self.parse_select().map(|select| Stmt::Select(select))
+                self.parse_select().map(|select| Statement::Select(select))
             }
             Ok((_, span)) => Err(Error::SyntaxError(span)),
             Err(e) => Err(Error::LexingError(e)),
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{identifier_from_str, Column, ColumnConstraint, Stmt, TableConstraint},
+        crate::ast::{identifier_from_str, Column, ColumnConstraint, Statement, TableConstraint},
         def::DataType,
     };
 
@@ -87,11 +87,11 @@ mod tests {
         ";
 
         let expected_output: Vec<Result<_>> = vec![
-            Ok(Stmt::CreateDatabase {
+            Ok(Statement::CreateDatabase {
                 if_not_exists: true,
                 name: identifier_from_str("abc"),
             }),
-            Ok(Stmt::CreateTable {
+            Ok(Statement::CreateTable {
                 if_not_exists: true,
                 name: identifier_from_str("abc"),
                 columns: vec![
@@ -117,19 +117,19 @@ mod tests {
                 )],
                 from_query: None,
             }),
-            Ok(Stmt::DropDatabase {
+            Ok(Statement::DropDatabase {
                 name: identifier_from_str("abc"),
             }),
-            Ok(Stmt::DropTable {
+            Ok(Statement::DropTable {
                 name: identifier_from_str("a123"),
             }),
-            Ok(Stmt::CreateIndex {
+            Ok(Statement::CreateIndex {
                 is_unique: false,
                 name: identifier_from_str("hi"),
                 table: identifier_from_str("abc"),
                 columns: vec![identifier_from_str("a"), identifier_from_str("b")],
             }),
-            Ok(Stmt::CreateIndex {
+            Ok(Statement::CreateIndex {
                 is_unique: true,
                 name: identifier_from_str("hello"),
                 table: identifier_from_str("abc"),

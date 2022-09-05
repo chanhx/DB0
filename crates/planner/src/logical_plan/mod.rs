@@ -10,13 +10,13 @@ use {
     crate::{PhysicalNode, Planner},
     create_table::build_create_table_plan,
     def::catalog::DatabaseCatalog,
-    parser::ast::Stmt,
+    parser::ast::Statement,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub(super) fn build_node(&self, stmt: Stmt) -> Result<Node> {
+    pub(super) fn build_node(&self, stmt: Statement) -> Result<Node> {
         Ok(match stmt {
-            Stmt::CreateDatabase {
+            Statement::CreateDatabase {
                 if_not_exists,
                 name,
             } => Node::Physical(PhysicalNode::CreateDatabase {
@@ -24,7 +24,7 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
                 name: name.0,
             }),
 
-            Stmt::CreateTable {
+            Statement::CreateTable {
                 if_not_exists,
                 name,
                 columns,
@@ -34,9 +34,9 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
                 build_create_table_plan(if_not_exists, name.0, columns, constraints)?,
             )),
 
-            Stmt::Select(query) => self.build_query_plan(query)?,
+            Statement::Select(query) => self.build_query_plan(query)?,
 
-            Stmt::Insert {
+            Statement::Insert {
                 table,
                 columns,
                 source,

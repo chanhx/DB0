@@ -5,13 +5,13 @@ use {
         Parser,
     },
     crate::{
-        ast::{InsertSource, Stmt},
+        ast::{InsertSource, Statement},
         lexer::{Keyword, Token},
     },
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_insert(&mut self) -> Result<Stmt> {
+    pub(super) fn parse_insert(&mut self) -> Result<Statement> {
         self.must_match(Token::Keyword(Keyword::INTO))?;
 
         let table = self.parse_identifier()?;
@@ -41,7 +41,7 @@ impl<'a> Parser<'a> {
             },
         });
 
-        Ok(Stmt::Insert {
+        Ok(Statement::Insert {
             table,
             columns,
             source,
@@ -54,7 +54,8 @@ mod tests {
     use {
         super::*,
         crate::ast::{
-            identifier_from_str, ColumnRef, Expr, FromItem, Literal, Query, SelectFrom, TargetElem,
+            identifier_from_str, ColumnRef, Expression, FromItem, Literal, Query, SelectFrom,
+            TargetElem,
         },
     };
 
@@ -65,7 +66,7 @@ mod tests {
             INSERT INTO def SELECT a, b FROM abc;
         ";
         let expected_output = vec![
-            Ok(Stmt::Insert {
+            Ok(Statement::Insert {
                 table: identifier_from_str("abc"),
                 columns: Some(vec![
                     identifier_from_str("a"),
@@ -73,26 +74,26 @@ mod tests {
                     identifier_from_str("c"),
                 ]),
                 source: InsertSource::Values(vec![vec![
-                    Expr::Literal(Literal::Integer(1)),
-                    Expr::Literal(Literal::Float(3.14)),
-                    Expr::Literal(Literal::Boolean(true)),
+                    Expression::Literal(Literal::Integer(1)),
+                    Expression::Literal(Literal::Float(3.14)),
+                    Expression::Literal(Literal::Boolean(true)),
                 ]]),
             }),
-            Ok(Stmt::Insert {
+            Ok(Statement::Insert {
                 table: identifier_from_str("def"),
                 columns: None,
                 source: InsertSource::FromQuery(Box::new(Query {
                     distinct: false,
                     targets: vec![
                         TargetElem::Expr {
-                            expr: Expr::Column(ColumnRef {
+                            expr: Expression::Column(ColumnRef {
                                 column: identifier_from_str("a"),
                                 table: None,
                             }),
                             alias: None,
                         },
                         TargetElem::Expr {
-                            expr: Expr::Column(ColumnRef {
+                            expr: Expression::Column(ColumnRef {
                                 column: identifier_from_str("b"),
                                 table: None,
                             }),

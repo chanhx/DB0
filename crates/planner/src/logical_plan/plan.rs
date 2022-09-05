@@ -2,7 +2,7 @@ use {
     crate::{PhysicalNode, Scan},
     common::pub_fields_struct,
     def::JoinType,
-    parser::ast::{Expr, TargetElem},
+    parser::ast::{Expression, TargetElem},
 };
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ pub enum Node {
     },
     Filter {
         input: Option<Box<Node>>,
-        predict: Expr,
+        predict: Expression,
     },
     Projection {
         input: Option<Box<Node>>,
@@ -30,6 +30,6 @@ pub_fields_struct! {
     struct JoinItem {
         join_type: JoinType,
         node: Node,
-        cond: Option<Expr>,
+        cond: Option<Expression>,
     }
 }

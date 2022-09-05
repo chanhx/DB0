@@ -1,5 +1,5 @@
 use {
-    super::Expr,
+    super::Expression,
     crate::common::{Span, Spanned},
     common::pub_fields_struct,
     def::DataType,
@@ -30,7 +30,7 @@ pub enum ColumnConstraint {
     NotNull,
     PrimaryKey,
     Unique,
-    Default(Expr),
+    Default(Expression),
 }
 
 #[derive(Debug, PartialEq)]

@@ -1,27 +1,27 @@
-//! The definition of `Expr` is directly inspired by `toydb`.
+//! The definition of `Expression` is directly inspired by `toydb`.
 use {
     super::{ColumnRef, Identifier},
     crate::lexer::{Keyword, Token},
 };
 
 #[derive(Debug, PartialEq)]
-pub enum Expr {
+pub enum Expression {
     Column(ColumnRef),
     Literal(Literal),
     FunctionCall {
         func: Identifier,
-        arguments: Vec<Expr>,
+        arguments: Vec<Expression>,
     },
     Operation(Operation),
 }
 
-impl From<Literal> for Expr {
+impl From<Literal> for Expression {
     fn from(literal: Literal) -> Self {
         Self::Literal(literal)
     }
 }
 
-impl From<Operation> for Expr {
+impl From<Operation> for Expression {
     fn from(op: Operation) -> Self {
         Self::Operation(op)
     }
@@ -51,15 +51,15 @@ macro_rules! op_variants {
     ($((unary, $($uop:ident)*))* $((binary, $($bop:ident)*))*) => {
         #[derive(Debug, PartialEq)]
         pub enum Operation {
-            $($($uop(Box<Expr>),)*)*
-            $($($bop(Box<Expr>, Box<Expr>),)*)*
+            $($($uop(Box<Expression>),)*)*
+            $($($bop(Box<Expression>, Box<Expression>),)*)*
         }
     }
 }
 
 macro_rules! build_expr {
     (unary { $($op:ident)* }) => {
-        pub fn build_expr(&self, expr: Expr) -> Expr {
+        pub fn build_expr(&self, expr: Expression) -> Expression {
             let expr = Box::new(expr);
 
             match self {
@@ -69,7 +69,7 @@ macro_rules! build_expr {
         }
     };
     (binary { $($op:ident)* }) => {
-        pub fn build_expr(&self, lhs: Expr, rhs: Expr) -> Expr {
+        pub fn build_expr(&self, lhs: Expression, rhs: Expression) -> Expression {
             let (lhs, rhs) = (Box::new(lhs), Box::new(rhs));
 
             match self {

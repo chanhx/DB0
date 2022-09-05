@@ -5,14 +5,14 @@ use {
         Parser,
     },
     crate::{
-        ast::{Column, ColumnConstraint, Stmt, TableConstraint},
+        ast::{Column, ColumnConstraint, Statement, TableConstraint},
         common::Spanned,
         lexer::{Keyword, Token},
     },
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_create(&mut self) -> Result<Stmt> {
+    pub(super) fn parse_create(&mut self) -> Result<Statement> {
         // let or_replace = self.match_keyword_sequence(&[Keyword::OR, Keyword::REPLACE]);
         // let is_temp = self.match_keyword_aliases(&[Keyword::TEMP, Keyword::TEMPORARY]);
 
@@ -27,35 +27,35 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn parse_drop(&mut self) -> Result<Stmt> {
+    pub(super) fn parse_drop(&mut self) -> Result<Statement> {
         match_token!(self.tokens.next(), {
             (Token::Keyword(Keyword::DATABASE), _) =>
-                Ok(Stmt::DropDatabase { name: self.parse_identifier()? }),
+                Ok(Statement::DropDatabase { name: self.parse_identifier()? }),
             (Token::Keyword(Keyword::TABLE), _) =>
-                Ok(Stmt::DropTable { name: self.parse_identifier()? }),
+                Ok(Statement::DropTable { name: self.parse_identifier()? }),
         })
     }
 
-    fn parse_create_database(&mut self) -> Result<Stmt> {
+    fn parse_create_database(&mut self) -> Result<Statement> {
         let if_not_exists =
             self.match_keyword_sequence(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
 
         let name = self.parse_identifier()?;
 
-        Ok(Stmt::CreateDatabase {
+        Ok(Statement::CreateDatabase {
             if_not_exists,
             name,
         })
     }
 
-    fn parse_create_table(&mut self) -> Result<Stmt> {
+    fn parse_create_table(&mut self) -> Result<Statement> {
         let if_not_exists =
             self.match_keyword_sequence(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
 
         let name = self.parse_identifier()?;
         let (columns, constraints) = self.parse_table_structure()?;
 
-        Ok(Stmt::CreateTable {
+        Ok(Statement::CreateTable {
             if_not_exists,
             name,
             columns,
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
         Ok(constraints)
     }
 
-    fn parse_create_index(&mut self, is_unique: bool) -> Result<Stmt> {
+    fn parse_create_index(&mut self, is_unique: bool) -> Result<Statement> {
         let name = self.parse_identifier()?;
 
         self.must_match(Token::Keyword(Keyword::ON))?;
@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         let (columns, _) =
             self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
-        Ok(Stmt::CreateIndex {
+        Ok(Statement::CreateIndex {
             is_unique,
             name,
             table,

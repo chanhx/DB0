@@ -5,7 +5,7 @@ use {
         Parser,
     },
     crate::{
-        ast::{Expr, FromItem, JoinItem, Query, SelectFrom, TargetElem},
+        ast::{Expression, FromItem, JoinItem, Query, SelectFrom, TargetElem},
         lexer::{Keyword, Token},
     },
     def::JoinType,
@@ -122,7 +122,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn parse_where_clause(&mut self) -> Result<Option<Expr>> {
+    fn parse_where_clause(&mut self) -> Result<Option<Expression>> {
         Ok(match self.try_match(Token::Keyword(Keyword::WHERE)) {
             Some(_) => Some(self.parse_expr()?),
             None => None,
@@ -134,24 +134,24 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{identifier_from_str, ColumnRef, Literal, Operation, Stmt},
+        crate::ast::{identifier_from_str, ColumnRef, Literal, Operation, Statement},
     };
 
     #[test]
     fn it_works() {
         let input = "SELECT a, d.e AS de FROM abc INNER JOIN def as d ON abc.a = d.f WHERE c = 0;";
-        let expected_output = vec![Ok(Stmt::Select(Query {
+        let expected_output = vec![Ok(Statement::Select(Query {
             distinct: false,
             targets: vec![
                 TargetElem::Expr {
-                    expr: Expr::Column(ColumnRef {
+                    expr: Expression::Column(ColumnRef {
                         column: identifier_from_str("a"),
                         table: None,
                     }),
                     alias: None,
                 },
                 TargetElem::Expr {
-                    expr: Expr::Column(ColumnRef {
+                    expr: Expression::Column(ColumnRef {
                         column: identifier_from_str("e"),
                         table: Some(identifier_from_str("d")),
                     }),
@@ -169,24 +169,24 @@ mod tests {
                         alias: Some(identifier_from_str("d")),
                     },
                     join_type: JoinType::Inner,
-                    cond: Some(Expr::Operation(Operation::Equal(
-                        Box::new(Expr::Column(ColumnRef {
+                    cond: Some(Expression::Operation(Operation::Equal(
+                        Box::new(Expression::Column(ColumnRef {
                             column: identifier_from_str("a"),
                             table: Some(identifier_from_str("abc")),
                         })),
-                        Box::new(Expr::Column(ColumnRef {
+                        Box::new(Expression::Column(ColumnRef {
                             column: identifier_from_str("f"),
                             table: Some(identifier_from_str("d")),
                         })),
                     ))),
                 }],
             }),
-            cond: Some(Expr::Operation(Operation::Equal(
-                Box::new(Expr::Column(ColumnRef {
+            cond: Some(Expression::Operation(Operation::Equal(
+                Box::new(Expression::Column(ColumnRef {
                     column: identifier_from_str("c"),
                     table: None,
                 })),
-                Box::new(Expr::Literal(Literal::Integer(0))),
+                Box::new(Expression::Literal(Literal::Integer(0))),
             ))),
         }))];
 

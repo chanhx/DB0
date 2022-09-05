@@ -5,17 +5,17 @@ use {
         Parser,
     },
     crate::{
-        ast::{ColumnRef, Expr, InfixOperator, Literal, Operator, PrefixOperator},
+        ast::{ColumnRef, Expression, InfixOperator, Literal, Operator, PrefixOperator},
         lexer::{Keyword, Token},
     },
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_expr(&mut self) -> Result<Expr> {
+    pub(super) fn parse_expr(&mut self) -> Result<Expression> {
         self.parse_expr_recursive(0)
     }
 
-    fn parse_expr_recursive(&mut self, min_prec: u8) -> Result<Expr> {
+    fn parse_expr_recursive(&mut self, min_prec: u8) -> Result<Expression> {
         let mut expr = match self.try_match_operator::<PrefixOperator>(min_prec) {
             Some(op) => op.build_expr(self.parse_expr_recursive(op.prec())?),
             None => self.parse_expr_atom()?,
@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
         op
     }
 
-    fn parse_expr_atom(&mut self) -> Result<Expr> {
+    fn parse_expr_atom(&mut self) -> Result<Expression> {
         Ok(match_token!(self.tokens.next(), {
             (Token::Identifier, span) => {
                 let id = self.identifier_from_span(span);
@@ -50,17 +50,17 @@ impl<'a> Parser<'a> {
                 match self.tokens.peek() {
                     Some(Ok((Token::LeftParen, _))) => {
                         let (arguments, _) = self.parse_comma_separated_within_parentheses(Self::parse_expr, true)?;
-                        Expr::FunctionCall { func: id, arguments }
+                        Expression::FunctionCall { func: id, arguments }
                     },
                     Some(Ok((Token::Period, _))) => {
                         self.tokens.next();
                         let column = self.parse_identifier()?;
-                        Expr::Column(ColumnRef {
+                        Expression::Column(ColumnRef {
                             column,
                             table: Some(id),
                         })
                     },
-                    _ => Expr::Column(ColumnRef {
+                    _ => Expression::Column(ColumnRef {
                         column: id,
                         table: None,
                     })
@@ -96,22 +96,22 @@ mod tests {
     #[test]
     fn it_works() {
         let input = "a + b.c + 1 >= +3.5";
-        let expected_output = Expr::Operation(Operation::GreaterThanOrEqual(
-            Box::new(Expr::Operation(Operation::Add(
-                Box::new(Expr::Operation(Operation::Add(
-                    Box::from(Expr::Column(ColumnRef {
+        let expected_output = Expression::Operation(Operation::GreaterThanOrEqual(
+            Box::new(Expression::Operation(Operation::Add(
+                Box::new(Expression::Operation(Operation::Add(
+                    Box::from(Expression::Column(ColumnRef {
                         column: identifier_from_str("a"),
                         table: None,
                     })),
-                    Box::from(Expr::Column(ColumnRef {
+                    Box::from(Expression::Column(ColumnRef {
                         column: identifier_from_str("c"),
                         table: Some(identifier_from_str("b")),
                     })),
                 ))),
-                Box::from(Expr::Literal(Literal::Integer(1))),
+                Box::from(Expression::Literal(Literal::Integer(1))),
             ))),
-            Box::new(Expr::Operation(Operation::Positive(Box::new(
-                Expr::Literal(Literal::Float(3.5)),
+            Box::new(Expression::Operation(Operation::Positive(Box::new(
+                Expression::Literal(Literal::Float(3.5)),
             )))),
         ));
 

@@ -5,7 +5,7 @@ use {
         catalog::{ColumnDef, UniqueConstraint},
         JoinType,
     },
-    parser::ast::{Expr, TargetElem},
+    parser::ast::{Expression, TargetElem},
 };
 
 #[derive(Debug)]
@@ -22,7 +22,7 @@ pub enum PhysicalNode {
 
     Filter {
         input: Option<Box<PhysicalNode>>,
-        predict: Expr,
+        predict: Expression,
     },
     Projection {
         input: Option<Box<PhysicalNode>>,
@@ -52,6 +52,6 @@ pub_fields_struct! {
         join_type: JoinType,
         left: Box<PhysicalNode>,
         right: Box<PhysicalNode>,
-        cond: Option<Expr>,
+        cond: Option<Expression>,
     }
 }

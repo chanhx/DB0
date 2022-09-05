@@ -7,7 +7,7 @@ pub use self::{common::*, dml::*, expr::*};
 use crate::common::Spanned;
 
 #[derive(Debug, PartialEq)]
-pub enum Stmt {
+pub enum Statement {
     CreateDatabase {
         if_not_exists: bool,
         name: Identifier,

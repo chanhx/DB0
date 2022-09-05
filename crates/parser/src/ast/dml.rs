@@ -1,5 +1,5 @@
 use {
-    super::{Expr, Identifier},
+    super::{Expression, Identifier},
     common::pub_fields_struct,
     def::JoinType,
 };
@@ -18,13 +18,18 @@ pub enum FromItem {
 
 #[derive(Debug, PartialEq)]
 pub enum TargetElem {
-    Expr { expr: Expr, alias: Option<String> },
-    Wildcard { table: Option<String> },
+    Expr {
+        expr: Expression,
+        alias: Option<String>,
+    },
+    Wildcard {
+        table: Option<String>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum InsertSource {
-    Values(Vec<Vec<Expr>>),
+    Values(Vec<Vec<Expression>>),
     FromQuery(Box<Query>),
 }
 
@@ -34,14 +39,14 @@ pub_fields_struct! {
         distinct: bool,
         targets: Vec<TargetElem>,
         from: Option<SelectFrom>,
-        cond: Option<Expr>,
+        cond: Option<Expression>,
     }
 
     #[derive(Debug, PartialEq)]
     struct JoinItem {
         join_type: JoinType,
         item: FromItem,
-        cond: Option<Expr>,
+        cond: Option<Expression>,
     }
 
     #[derive(Debug, PartialEq)]

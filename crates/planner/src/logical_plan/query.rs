@@ -2,7 +2,7 @@ use {
     super::{JoinItem, Node},
     crate::{Error, Planner, Result, Scan},
     def::catalog::{DatabaseCatalog, Table},
-    parser::ast::{Expr, FromItem, Query, SelectFrom, TargetElem},
+    parser::ast::{Expression, FromItem, Query, SelectFrom, TargetElem},
     std::collections::HashMap,
 };
 
@@ -73,7 +73,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
     }
 }
 
-fn build_filter(predict: Expr, input: Option<Node>) -> Result<Node> {
+fn build_filter(predict: Expression, input: Option<Node>) -> Result<Node> {
     Ok(Node::Filter {
         input: input.map(|input| Box::new(input)),
         predict,

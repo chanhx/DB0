@@ -11,7 +11,7 @@ use {
     common::pub_fields_struct,
     def::catalog::{ColumnId, DatabaseCatalog, TableId},
     logical_plan::Node,
-    parser::ast::{Expr, Stmt},
+    parser::ast::{Expression, Statement},
 };
 
 pub struct Planner<'a, D: DatabaseCatalog> {
@@ -27,7 +27,7 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
         self.db_catalog
     }
 
-    pub fn build_execution_plan(&self, stmt: Stmt) -> Result<PhysicalNode> {
+    pub fn build_execution_plan(&self, stmt: Statement) -> Result<PhysicalNode> {
         let node = self.build_node(stmt)?;
         Ok(self.decide_physical_plan(node))
     }
@@ -46,6 +46,6 @@ pub_fields_struct! {
         table_id: TableId,
         // TODO: use ColumnId
         columns: Option<Vec<ColumnId>>,
-        values: Vec<Vec<Expr>>,
+        values: Vec<Vec<Expression>>,
     }
 }
