@@ -5,7 +5,10 @@ use {
         Parser,
     },
     crate::{
-        ast::{Column, ColumnConstraint, Statement, TableConstraint},
+        ast::{
+            Column, ColumnConstraint, CreateTableAsStmt, CreateTableStmt, Identifier, Statement,
+            TableConstraint, TableSchema,
+        },
         common::Spanned,
         lexer::{Keyword, Token},
     },
@@ -53,37 +56,88 @@ impl<'a> Parser<'a> {
             self.match_keyword_sequence(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
 
         let name = self.parse_identifier()?;
-        let (columns, constraints) = self.parse_table_structure()?;
 
-        Ok(Statement::CreateTable {
-            if_not_exists,
-            name,
-            columns,
-            constraints,
-            from_query: None,
-        })
+        let mut n = 0;
+        let mut unmatched_bracket = 0;
+        for i in 0.. {
+            match self.tokens.peek_nth(i) {
+                Some(Ok((Token::LeftParen, _))) => unmatched_bracket += 1,
+                Some(Ok((Token::RightParen, range))) => {
+                    if unmatched_bracket == 0 {
+                        return Err(Error::SyntaxError(range.clone()));
+                    }
+                    unmatched_bracket -= 1;
+                }
+                Some(Err(e)) => return Err(Error::LexingError(e.clone())),
+                Some(_) => {}
+                None => return Err(Error::UnexpectedEnd),
+            }
+
+            if unmatched_bracket == 0 {
+                n = i + 1;
+                break;
+            }
+        }
+
+        match self.tokens.peek_nth(n) {
+            Some(Ok((Token::Keyword(Keyword::AS), _))) => {
+                let (columns, constraints) = match self.tokens.peek() {
+                    Some(Ok((Token::LeftParen, _))) => {
+                        let (columns, _, constraints) = self.parse_table_schema(true)?;
+                        (Some(columns), constraints)
+                    }
+                    _ => (None, vec![]),
+                };
+                let query = self.parse_select()?;
+
+                Ok(Statement::CreateTableAs(CreateTableAsStmt {
+                    if_not_exists,
+                    name,
+                    columns,
+                    constraints,
+                    query,
+                }))
+            }
+            _ => {
+                let (_, columns, constraints) = self.parse_table_schema(false)?;
+                let table_schema = TableSchema {
+                    columns,
+                    constraints,
+                };
+
+                Ok(Statement::CreateTable(CreateTableStmt {
+                    if_not_exists,
+                    name,
+                    table_schema,
+                }))
+            }
+        }
     }
 
-    fn parse_table_structure(&mut self) -> Result<(Vec<Column>, Vec<Spanned<TableConstraint>>)> {
-        if self.try_match(Token::LeftParen).is_none() {
-            return Ok((vec![], vec![]));
-        }
+    fn parse_table_schema(
+        &mut self,
+        from_query: bool,
+    ) -> Result<(Vec<Identifier>, Vec<Column>, Vec<Spanned<TableConstraint>>)> {
+        self.must_match(Token::LeftParen)?;
 
-        if self.try_match(Token::RightParen).is_some() {
-            return Ok((vec![], vec![]));
-        }
-
-        let mut columns = vec![];
-        let mut table_constraints = vec![];
+        let mut column_names = vec![];
+        let mut column_defs = vec![];
+        let mut constraints = vec![];
 
         loop {
             match_token!(self.tokens.next(), {
+                (Token::Identifier, span) if from_query => {
+                    let name = self.identifier_from_span(span);
+
+                    column_names.push(name);
+                },
+
                 (Token::Identifier, span) => {
                     let name = self.identifier_from_span(span);
                     let data_type = self.parse_data_type()?;
                     let constraints = self.parse_column_constraint()?;
 
-                    columns.push(Column {
+                    column_defs.push(Column {
                         name,
                         data_type,
                         constraints,
@@ -93,12 +147,12 @@ impl<'a> Parser<'a> {
                     self.must_match(Token::Keyword(Keyword::KEY))?;
                     let (columns, s2) = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
-                    table_constraints.push((TableConstraint::PrimaryKey(columns), (*s1.start()..=*s2.end())));
+                    constraints.push((TableConstraint::PrimaryKey(columns), (*s1.start()..=*s2.end())));
                 },
                 (Token::Keyword(Keyword::UNIQUE), s1) => {
                     let (columns, s2) = self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
 
-                    table_constraints.push((
+                    constraints.push((
                         TableConstraint::Unique(columns),
                         (*s1.start()..=*s2.end()),
                     ));
@@ -111,7 +165,7 @@ impl<'a> Parser<'a> {
             })
         }
 
-        Ok((columns, table_constraints))
+        Ok((column_names, column_defs, constraints))
     }
 
     fn parse_column_constraint(&mut self) -> Result<Vec<Spanned<ColumnConstraint>>> {

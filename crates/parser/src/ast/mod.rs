@@ -1,10 +1,9 @@
 mod common;
+mod ddl;
 mod dml;
 mod expr;
 
-pub use self::{common::*, dml::*, expr::*};
-
-use crate::common::Spanned;
+pub use self::{common::*, ddl::*, dml::*, expr::*};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -18,13 +17,8 @@ pub enum Statement {
         table: Identifier,
         columns: Vec<Identifier>,
     },
-    CreateTable {
-        if_not_exists: bool,
-        name: Identifier,
-        columns: Vec<Column>,
-        constraints: Vec<Spanned<TableConstraint>>,
-        from_query: Option<Box<Query>>,
-    },
+    CreateTable(CreateTableStmt),
+    CreateTableAs(CreateTableAsStmt),
     DropDatabase {
         name: Identifier,
     },

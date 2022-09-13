@@ -2,7 +2,7 @@ use crate::common::Span;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     NoClosingQuoteForString(Span),
     UnexpectedChar { c: char, location: usize },

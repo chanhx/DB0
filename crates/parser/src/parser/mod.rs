@@ -62,7 +62,10 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{identifier_from_str, Column, ColumnConstraint, Statement, TableConstraint},
+        crate::ast::{
+            identifier_from_str, Column, ColumnConstraint, CreateTableStmt, Statement,
+            TableConstraint, TableSchema,
+        },
         def::DataType,
     };
 
@@ -91,32 +94,33 @@ mod tests {
                 if_not_exists: true,
                 name: identifier_from_str("abc"),
             }),
-            Ok(Statement::CreateTable {
+            Ok(Statement::CreateTable(CreateTableStmt {
                 if_not_exists: true,
                 name: identifier_from_str("abc"),
-                columns: vec![
-                    Column {
-                        name: identifier_from_str("a"),
-                        data_type: DataType::Integer,
-                        constraints: vec![],
-                    },
-                    Column {
-                        name: identifier_from_str("b"),
-                        data_type: DataType::Varchar(15),
-                        constraints: vec![(ColumnConstraint::NotNull, (180..=187))],
-                    },
-                    Column {
-                        name: identifier_from_str("c"),
-                        data_type: DataType::Integer,
-                        constraints: vec![(ColumnConstraint::Unique, (216..=221))],
-                    },
-                ],
-                constraints: vec![(
-                    TableConstraint::PrimaryKey(vec![identifier_from_str("a")]),
-                    (110..=124),
-                )],
-                from_query: None,
-            }),
+                table_schema: TableSchema {
+                    columns: vec![
+                        Column {
+                            name: identifier_from_str("a"),
+                            data_type: DataType::Integer,
+                            constraints: vec![],
+                        },
+                        Column {
+                            name: identifier_from_str("b"),
+                            data_type: DataType::Varchar(15),
+                            constraints: vec![(ColumnConstraint::NotNull, (180..=187))],
+                        },
+                        Column {
+                            name: identifier_from_str("c"),
+                            data_type: DataType::Integer,
+                            constraints: vec![(ColumnConstraint::Unique, (216..=221))],
+                        },
+                    ],
+                    constraints: vec![(
+                        TableConstraint::PrimaryKey(vec![identifier_from_str("a")]),
+                        (110..=124),
+                    )],
+                },
+            })),
             Ok(Statement::DropDatabase {
                 name: identifier_from_str("abc"),
             }),
