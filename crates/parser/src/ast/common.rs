@@ -1,9 +1,4 @@
-use {
-    super::Expression,
-    crate::common::{Span, Spanned},
-    common::pub_fields_struct,
-    def::DataType,
-};
+use {crate::common::Span, common::pub_fields_struct};
 
 #[derive(Debug)]
 pub struct Identifier(pub String, pub Span);
@@ -25,37 +20,10 @@ pub(crate) fn identifier_from_str(s: &str) -> Identifier {
     Identifier(s.to_string(), 0..=s.len() - 1)
 }
 
-#[derive(Debug, PartialEq)]
-pub enum ColumnConstraint {
-    NotNull,
-    PrimaryKey,
-    Unique,
-    Default(Expression),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum TableConstraint {
-    Unique(Vec<Identifier>),
-    PrimaryKey(Vec<Identifier>),
-}
-
 pub_fields_struct! {
-    #[derive(Debug, PartialEq)]
-    struct Column {
-        name: Identifier,
-        data_type: DataType,
-        constraints: Vec<Spanned<ColumnConstraint>>,
-    }
-
     #[derive(Debug, PartialEq)]
     struct ColumnRef {
         column: Identifier,
         table: Option<Identifier>,
-    }
-
-    #[derive(Debug, PartialEq)]
-    struct Index {
-        name: Identifier,
-        columns: Vec<String>,
     }
 }

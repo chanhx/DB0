@@ -2,7 +2,7 @@ use {
     super::{JoinItem, Node},
     crate::{Error, Planner, Result, Scan},
     def::catalog::{DatabaseCatalog, Table},
-    parser::ast::{Expression, FromItem, Query, SelectFrom, TargetElem},
+    parser::ast::{dml::*, expr::Expression},
     std::collections::HashMap,
 };
 

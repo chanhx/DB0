@@ -5,7 +5,7 @@ use {
         Parser,
     },
     crate::{
-        ast::{Expression, FromItem, JoinItem, Query, SelectFrom, TargetElem},
+        ast::{dml::*, expr::*},
         lexer::{Keyword, Token},
     },
     def::JoinType,
@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{identifier_from_str, ColumnRef, Literal, Operation, Statement},
+        crate::ast::{identifier_from_str, ColumnRef, Statement},
     };
 
     #[test]

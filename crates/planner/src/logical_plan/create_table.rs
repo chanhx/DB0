@@ -2,7 +2,7 @@ use {
     crate::{physical_plan::CreateTable, Error, Result},
     def::catalog::{ColumnDef, UniqueConstraint},
     parser::{
-        ast::{self, ColumnConstraint, Identifier, TableConstraint},
+        ast::{ddl::*, Identifier},
         Span, Spanned,
     },
     std::collections::HashSet,
@@ -11,7 +11,7 @@ use {
 pub fn build_create_table_plan(
     if_not_exists: bool,
     name: String,
-    ast_columns: Vec<ast::Column>,
+    ast_columns: Vec<Column>,
     constraints: Vec<Spanned<TableConstraint>>,
 ) -> Result<CreateTable> {
     let mut ids = HashSet::new();

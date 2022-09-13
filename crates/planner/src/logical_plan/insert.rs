@@ -2,7 +2,7 @@ use {
     super::Node,
     crate::{Error, Insert, PhysicalNode, Planner, Result},
     def::catalog::{DatabaseCatalog, Table},
-    parser::ast::{Identifier, InsertSource},
+    parser::ast::{dml::InsertSource, Identifier},
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {

@@ -1,9 +1,11 @@
 mod common;
-mod ddl;
-mod dml;
-mod expr;
+pub mod ddl;
+pub mod dml;
+pub mod expr;
 
-pub use self::{common::*, ddl::*, dml::*, expr::*};
+pub use self::common::*;
+
+use self::{ddl::*, dml::*};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {

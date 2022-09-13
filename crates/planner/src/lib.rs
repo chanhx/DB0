@@ -11,7 +11,7 @@ use {
     common::pub_fields_struct,
     def::catalog::{ColumnId, DatabaseCatalog, TableId},
     logical_plan::Node,
-    parser::ast::{Expression, Statement},
+    parser::ast::{expr::Expression, Statement},
 };
 
 pub struct Planner<'a, D: DatabaseCatalog> {

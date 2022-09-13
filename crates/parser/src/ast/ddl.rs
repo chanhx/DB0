@@ -1,10 +1,32 @@
 use {
-    super::{Column, Identifier, Query, TableConstraint},
+    super::{expr::Expression, Identifier, Query},
     crate::Spanned,
     common::pub_fields_struct,
+    def::DataType,
 };
 
+#[derive(Debug, PartialEq)]
+pub enum TableConstraint {
+    Unique(Vec<Identifier>),
+    PrimaryKey(Vec<Identifier>),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ColumnConstraint {
+    NotNull,
+    PrimaryKey,
+    Unique,
+    Default(Expression),
+}
+
 pub_fields_struct! {
+    #[derive(Debug, PartialEq)]
+    struct Column {
+        name: Identifier,
+        data_type: DataType,
+        constraints: Vec<Spanned<ColumnConstraint>>,
+    }
+
     #[derive(Debug, PartialEq)]
     struct TableSchema {
         columns: Vec<Column>,

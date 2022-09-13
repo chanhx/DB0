@@ -5,7 +5,7 @@ use {
         catalog::{ColumnDef, UniqueConstraint},
         JoinType,
     },
-    parser::ast::{Expression, TargetElem},
+    parser::ast::{dml::TargetElem, expr::Expression},
 };
 
 #[derive(Debug)]

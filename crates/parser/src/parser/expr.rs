@@ -5,7 +5,7 @@ use {
         Parser,
     },
     crate::{
-        ast::{ColumnRef, Expression, InfixOperator, Literal, Operator, PrefixOperator},
+        ast::{expr::*, ColumnRef},
         lexer::{Keyword, Token},
     },
 };
@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{identifier_from_str, Operation},
+        crate::ast::{expr::Operation, identifier_from_str},
     };
 
     #[test]

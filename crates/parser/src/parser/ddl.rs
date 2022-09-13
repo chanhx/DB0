@@ -5,10 +5,7 @@ use {
         Parser,
     },
     crate::{
-        ast::{
-            Column, ColumnConstraint, CreateTableAsStmt, CreateTableStmt, Identifier, Statement,
-            TableConstraint, TableSchema,
-        },
+        ast::{ddl::*, Identifier, Statement},
         common::Spanned,
         lexer::{Keyword, Token},
     },

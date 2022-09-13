@@ -2,7 +2,7 @@ use {
     crate::{PhysicalNode, Scan},
     common::pub_fields_struct,
     def::JoinType,
-    parser::ast::{Expression, TargetElem},
+    parser::ast::{dml::TargetElem, expr::Expression},
 };
 
 #[derive(Debug)]

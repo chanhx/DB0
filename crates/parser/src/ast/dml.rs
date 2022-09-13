@@ -1,5 +1,5 @@
 use {
-    super::{Expression, Identifier},
+    super::{expr::Expression, Identifier},
     common::pub_fields_struct,
     def::JoinType,
 };
