@@ -1,13 +1,13 @@
 use {
     super::{Join, PhysicalNode},
-    crate::{logical_plan::JoinItem, Node, Planner},
+    crate::{logical_plan::JoinItem, LogicalNode, Planner},
     def::catalog::DatabaseCatalog,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
     pub(super) fn decide_join_plan(
         &self,
-        initial_node: Node,
+        initial_node: LogicalNode,
         joined_nodes: Vec<JoinItem>,
     ) -> PhysicalNode {
         let mut node = self.decide_physical_plan(initial_node);

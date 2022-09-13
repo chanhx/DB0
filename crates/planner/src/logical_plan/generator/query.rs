@@ -1,13 +1,16 @@
 use {
-    super::{JoinItem, Node},
-    crate::{Error, Planner, Result, Scan},
-    def::catalog::{DatabaseCatalog, Table},
-    parser::ast::{dml::*, expr::Expression},
+    super::{Generator, LogicalNode},
+    crate::{Error, Result, Scan},
+    def::catalog::Table,
+    parser::ast::{
+        dml::{FromItem, Query, SelectFrom, TargetElem},
+        expr::Expression,
+    },
     std::collections::HashMap,
 };
 
-impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
-    pub fn build_query_plan(&self, query: Query) -> Result<Node> {
+impl Generator {
+    pub fn build_query_plan(&self, query: Query) -> Result<LogicalNode> {
         let mut scope = Scope::<'b, D::T>::new();
 
         let node = query
@@ -23,7 +26,11 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
         build_projection(&mut scope, query.distinct, query.targets, node)
     }
 
-    fn build_from_clause(&'a self, scope: &mut Scope<'b, D::T>, from: SelectFrom) -> Result<Node> {
+    fn build_from_clause(
+        &'a self,
+        scope: &mut Scope<'b, D::T>,
+        from: SelectFrom,
+    ) -> Result<LogicalNode> {
         let node = self.build_scan(scope, from.item)?;
 
         let joined_nodes = from
@@ -39,7 +46,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(if joined_nodes.len() > 0 {
-            Node::Join {
+            LogicalNode::Join {
                 initial_node: Box::new(node),
                 joined_nodes,
             }
@@ -48,7 +55,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
         })
     }
 
-    fn build_scan(&'a self, scope: &mut Scope<'b, D::T>, item: FromItem) -> Result<Node> {
+    fn build_scan(&'a self, scope: &mut Scope<'b, D::T>, item: FromItem) -> Result<LogicalNode> {
         Ok(match item {
             FromItem::Table { name, alias } => {
                 let catalog = self.db_catalog();
@@ -63,7 +70,7 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
                     scope.table_aliases.insert(alias.0, table);
                 }
 
-                Node::Scan(Scan {
+                LogicalNode::Scan(Scan {
                     table_id: table.id(),
                     projection: None,
                 })
@@ -73,8 +80,8 @@ impl<'b, 'a: 'b, D: DatabaseCatalog> Planner<'a, D> {
     }
 }
 
-fn build_filter(predict: Expression, input: Option<Node>) -> Result<Node> {
-    Ok(Node::Filter {
+fn build_filter(predict: Expression, input: Option<LogicalNode>) -> Result<LogicalNode> {
+    Ok(LogicalNode::Filter {
         input: input.map(|input| Box::new(input)),
         predict,
     })
@@ -84,9 +91,9 @@ fn build_projection<'a, T: Table>(
     _scope: &mut Scope<'a, T>,
     distinct: bool,
     targets: Vec<TargetElem>,
-    input: Option<Node>,
-) -> Result<Node> {
-    Ok(Node::Projection {
+    input: Option<LogicalNode>,
+) -> Result<LogicalNode> {
+    Ok(LogicalNode::Projection {
         input: input.map(|input| Box::new(input)),
         distinct,
         targets,

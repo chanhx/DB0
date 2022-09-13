@@ -1,33 +1,31 @@
 mod join;
-mod plan;
+mod node;
 mod scan;
 
-pub use self::plan::*;
+pub use self::node::*;
 
 use {
-    crate::{Node, Planner},
+    crate::{LogicalNode, Planner},
     def::catalog::DatabaseCatalog,
 };
 
 impl<'a, D: DatabaseCatalog> Planner<'a, D> {
-    pub(super) fn decide_physical_plan(&self, node: Node) -> PhysicalNode {
+    pub(super) fn decide_physical_plan(&self, node: LogicalNode) -> PhysicalNode {
         match node {
-            Node::Physical(node) => node,
+            LogicalNode::Scan(scan) => self.decide_scan_plan(scan),
 
-            Node::Scan(scan) => self.decide_scan_plan(scan),
-
-            Node::Join {
+            LogicalNode::Join {
                 initial_node,
                 joined_nodes,
             } => self.decide_join_plan(*initial_node, joined_nodes),
 
-            Node::Filter { input, predict } => {
+            LogicalNode::Filter { input, predict } => {
                 let input = input.map(|input| Box::new(self.decide_physical_plan(*input)));
 
                 PhysicalNode::Filter { input, predict }
             }
 
-            Node::Projection {
+            LogicalNode::Projection {
                 input,
                 distinct,
                 targets,

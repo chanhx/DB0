@@ -1,6 +1,6 @@
 use {
-    super::Node,
-    crate::{Error, Insert, PhysicalNode, Planner, Result},
+    super::LogicalNode,
+    crate::{Error, Insert, Planner, Result},
     def::catalog::{DatabaseCatalog, Table},
     parser::ast::{dml::InsertSource, Identifier},
 };
@@ -11,7 +11,7 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
         table: String,
         columns: Option<Vec<Identifier>>,
         source: InsertSource,
-    ) -> Result<Node> {
+    ) -> Result<LogicalNode> {
         let catalog = self.db_catalog();
         let table = catalog
             .get_table(&table)
@@ -43,10 +43,10 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
             }
         };
 
-        Ok(Node::Physical(PhysicalNode::Insert(Insert {
+        Ok(LogicalNode::Insert(Insert {
             table_id: table.id(),
             columns,
             values,
-        })))
+        }))
     }
 }

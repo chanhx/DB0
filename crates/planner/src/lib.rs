@@ -10,7 +10,7 @@ pub use {
 use {
     common::pub_fields_struct,
     def::catalog::{ColumnId, DatabaseCatalog, TableId},
-    logical_plan::Node,
+    logical_plan::LogicalNode,
     parser::ast::{expr::Expression, Statement},
 };
 
@@ -27,10 +27,10 @@ impl<'a, D: DatabaseCatalog> Planner<'a, D> {
         self.db_catalog
     }
 
-    pub fn build_execution_plan(&self, stmt: Statement) -> Result<PhysicalNode> {
-        let node = self.build_node(stmt)?;
-        Ok(self.decide_physical_plan(node))
-    }
+    // pub fn build_execution_plan(&self, stmt: Statement) -> Result<PhysicalNode> {
+    //     let node = self.build_node(stmt)?;
+    //     Ok(self.decide_physical_plan(node))
+    // }
 }
 
 pub_fields_struct! {

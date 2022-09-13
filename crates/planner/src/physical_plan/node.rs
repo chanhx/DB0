@@ -1,21 +1,12 @@
 use {
     crate::{Insert, Scan},
     common::pub_fields_struct,
-    def::{
-        catalog::{ColumnDef, UniqueConstraint},
-        JoinType,
-    },
+    def::JoinType,
     parser::ast::{dml::TargetElem, expr::Expression},
 };
 
 #[derive(Debug)]
 pub enum PhysicalNode {
-    CreateDatabase {
-        if_not_exists: bool,
-        name: String,
-    },
-    CreateTable(CreateTable),
-
     SeqScan(Scan),
     IndexScan(Scan),
     IndexOnlyScan(Scan),
@@ -38,15 +29,6 @@ pub enum PhysicalNode {
 }
 
 pub_fields_struct! {
-    #[derive(Debug)]
-    struct CreateTable {
-        if_not_exists: bool,
-        name: String,
-        columns: Vec<ColumnDef>,
-        primary_key_columns: Option<Vec<String>>,
-        unique_contraints: Vec<UniqueConstraint>,
-    }
-
     #[derive(Debug)]
     struct Join {
         join_type: JoinType,
