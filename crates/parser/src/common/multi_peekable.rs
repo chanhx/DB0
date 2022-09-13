@@ -39,7 +39,7 @@ impl<I: Iterator> MultiPeekable<I> {
         match self.next()? {
             matched if func(&matched) => Some(matched),
             other => {
-                self.buf.push_back(other);
+                self.buf.push_front(other);
                 None
             }
         }
