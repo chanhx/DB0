@@ -40,11 +40,20 @@ pub_fields_struct! {
         table_schema: TableSchema,
     }
 
+    // /// `RedefinedColumn` is used to represent columns defined in `CreateTableAs` statement.
+    // #[derive(Debug, PartialEq)]
+    // struct RedefinedColumn {
+    //     name: Identifier,
+    //     data_type: Option<DataType>,
+    //     constraints: Vec<Spanned<ColumnConstraint>>,
+    // }
+
+    // TODO: types in `columns` are optional
     #[derive(Debug, PartialEq)]
     struct CreateTableAsStmt {
         if_not_exists: bool,
         name: Identifier,
-        columns: Option<Vec<Identifier>>,
+        columns: Option<Vec<Column>>,
         constraints: Vec<Spanned<TableConstraint>>,
         query: Query,
     }
