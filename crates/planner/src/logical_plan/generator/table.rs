@@ -39,7 +39,7 @@ impl Generator {
                 let mut is_nullable = true;
 
                 // check multiple primary keys
-                for (constraint, span) in column.constraints {
+                for Spanned(constraint, span) in column.constraints {
                     match constraint {
                         ColumnConstraint::PrimaryKey => {
                             self.check_duplicate_primary_key(
@@ -67,7 +67,7 @@ impl Generator {
             .collect::<Result<Vec<_>>>()?;
 
         // check if there are conflicts with column constraints or undefined columns
-        for (constraint, span) in constraints {
+        for Spanned(constraint, span) in constraints {
             match constraint {
                 TableConstraint::PrimaryKey(columns) => {
                     self.check_duplicate_primary_key(&name.0, primary_key_columns.is_some(), span)?;

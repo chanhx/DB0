@@ -5,7 +5,8 @@ use {
         Parser,
     },
     crate::{
-        ast::{expr::*, ColumnRef},
+        ast::expr::*,
+        common::{ColumnRef, Spanned},
         lexer::{Keyword, Token},
     },
 };
@@ -30,7 +31,7 @@ impl<'a> Parser<'a> {
 
     fn try_match_operator<T: Operator>(&mut self, min_prec: u8) -> Option<T> {
         let op = match self.tokens.peek()? {
-            Ok((t, _)) => T::from(t),
+            Ok(Spanned(t, _)) => T::from(t),
             _ => None,
         }
         .filter(|op| op.prec() >= min_prec);
@@ -44,15 +45,15 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_atom(&mut self) -> Result<Expression> {
         Ok(match_token!(self.tokens.next(), {
-            (Token::Identifier, span) => {
+            Spanned(Token::Identifier, span) => {
                 let id = self.identifier_from_span(span);
 
                 match self.tokens.peek() {
-                    Some(Ok((Token::LeftParen, _))) => {
-                        let (arguments, _) = self.parse_comma_separated_within_parentheses(Self::parse_expr, true)?;
+                    Some(Ok(Spanned(Token::LeftParen, _))) => {
+                        let Spanned(arguments, _) = self.parse_comma_separated_within_parentheses(Self::parse_expr, true)?;
                         Expression::FunctionCall { func: id, arguments }
                     },
-                    Some(Ok((Token::Period, _))) => {
+                    Some(Ok(Spanned(Token::Period, _))) => {
                         self.tokens.next();
                         let column = self.parse_identifier()?;
                         Expression::Column(ColumnRef {
@@ -66,22 +67,22 @@ impl<'a> Parser<'a> {
                     })
                 }
             },
-            (Token::Number { is_float }, span) => {
+            Spanned(Token::Number { is_float }, span) => {
                 if is_float {
                     Literal::Float(self.number_from_span(span)?).into()
                 } else {
                     Literal::Integer(self.number_from_span(span)?).into()
                 }
             },
-            (Token::LeftParen, _) => {
+            Spanned(Token::LeftParen, _) => {
                 let expr = self.parse_expr()?;
                 self.must_match(Token::RightParen)?;
                 expr
             },
-            (Token::String, span) => Literal::String(self.string_from_span(span)).into(),
-            (Token::Keyword(Keyword::TRUE), _) => Literal::Boolean(true).into(),
-            (Token::Keyword(Keyword::FALSE), _) => Literal::Boolean(false).into(),
-            (Token::Keyword(Keyword::NULL), _) => Literal::Null.into(),
+            Spanned(Token::String, span) => Literal::String(self.string_from_span(span)).into(),
+            Spanned(Token::Keyword(Keyword::TRUE), _) => Literal::Boolean(true).into(),
+            Spanned(Token::Keyword(Keyword::FALSE), _) => Literal::Boolean(false).into(),
+            Spanned(Token::Keyword(Keyword::NULL), _) => Literal::Null.into(),
         }))
     }
 }
@@ -90,7 +91,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{expr::Operation, identifier_from_str},
+        crate::{ast::expr::Operation, common::identifier_from_str},
     };
 
     #[test]

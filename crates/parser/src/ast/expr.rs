@@ -1,7 +1,7 @@
 //! The definition of `Expression` is directly inspired by `toydb`.
-use {
-    super::{ColumnRef, Identifier},
-    crate::lexer::{Keyword, Token},
+use crate::{
+    common::{ColumnRef, Identifier},
+    lexer::{Keyword, Token},
 };
 
 #[derive(Debug, PartialEq)]

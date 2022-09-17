@@ -1,4 +1,4 @@
-use parser::Span;
+use parser::common::Span;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

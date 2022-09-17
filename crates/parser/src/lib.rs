@@ -1,9 +1,6 @@
 pub mod ast;
-mod common;
+pub mod common;
 mod lexer;
 mod parser;
 
-pub use self::{
-    common::{Span, Spanned},
-    parser::{Error, Parser, Result},
-};
+pub use self::parser::{Error, Parser, Result};

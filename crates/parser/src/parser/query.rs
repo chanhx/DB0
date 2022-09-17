@@ -6,6 +6,7 @@ use {
     },
     crate::{
         ast::{dml::*, expr::*},
+        common::Spanned,
         lexer::{Keyword, Token},
     },
     def::JoinType,
@@ -34,7 +35,7 @@ impl<'a> Parser<'a> {
     fn parse_select_target(&mut self) -> Result<TargetElem> {
         Ok(match self.tokens.peek() {
             // TODO parse wildcard with table name
-            Some(Ok((Token::Asterisk, _))) => TargetElem::Wildcard { table: None },
+            Some(Ok(Spanned(Token::Asterisk, _))) => TargetElem::Wildcard { table: None },
             _ => {
                 let expr = self.parse_expr()?;
                 let alias = self.parse_alias()?.map(|id| id.0);
@@ -66,13 +67,13 @@ impl<'a> Parser<'a> {
 
     fn parse_from_item(&mut self) -> Result<FromItem> {
         Ok(match_token!(self.tokens.next(), {
-            (Token::Identifier, span) => {
+            Spanned(Token::Identifier, span) => {
                 let name = self.identifier_from_span(span);
                 let alias = self.parse_alias()?;
 
                 FromItem::Table { name, alias }
             },
-            (Token::LeftParen, _) => {
+            Spanned(Token::LeftParen, _) => {
                 self.must_match(Token::Keyword(Keyword::SELECT))?;
                 let subquery= self.parse_select()?;
                 self.must_match(Token::RightParen)?;
@@ -88,20 +89,20 @@ impl<'a> Parser<'a> {
 
     fn parse_join_item(&mut self) -> Result<Option<JoinItem>> {
         let join_type = match self.tokens.peek() {
-            Some(Ok((Token::Keyword(Keyword::JOIN), _))) => JoinType::Inner,
-            Some(Ok((Token::Keyword(Keyword::CROSS), _))) => {
+            Some(Ok(Spanned(Token::Keyword(Keyword::JOIN), _))) => JoinType::Inner,
+            Some(Ok(Spanned(Token::Keyword(Keyword::CROSS), _))) => {
                 self.tokens.next();
                 JoinType::Cross
             }
-            Some(Ok((Token::Keyword(Keyword::INNER), _))) => {
+            Some(Ok(Spanned(Token::Keyword(Keyword::INNER), _))) => {
                 self.tokens.next();
                 JoinType::Inner
             }
-            Some(Ok((Token::Keyword(Keyword::LEFT), _))) => {
+            Some(Ok(Spanned(Token::Keyword(Keyword::LEFT), _))) => {
                 self.tokens.next();
                 JoinType::Left
             }
-            Some(Ok((Token::Keyword(Keyword::RIGHT), _))) => {
+            Some(Ok(Spanned(Token::Keyword(Keyword::RIGHT), _))) => {
                 self.tokens.next();
                 JoinType::Right
             }
@@ -134,7 +135,10 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{identifier_from_str, ColumnRef, Statement},
+        crate::{
+            ast::Statement,
+            common::{identifier_from_str, ColumnRef},
+        },
     };
 
     #[test]

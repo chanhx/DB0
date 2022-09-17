@@ -6,6 +6,7 @@ use {
     },
     crate::{
         ast::{dml::InsertSource, Statement},
+        common::Spanned,
         lexer::{Keyword, Token},
     },
 };
@@ -16,8 +17,8 @@ impl<'a> Parser<'a> {
 
         let table = self.parse_identifier()?;
         let columns = match self.tokens.peek() {
-            Some(Ok((Token::LeftParen, _))) => {
-                let (cols, _) =
+            Some(Ok(Spanned(Token::LeftParen, _))) => {
+                let Spanned(cols, _) =
                     self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
                 Some(cols)
             }
@@ -25,17 +26,17 @@ impl<'a> Parser<'a> {
         };
 
         let source = match_token!(self.tokens.next(), {
-            (Token::Keyword(Keyword::VALUES), _) => {
+            Spanned(Token::Keyword(Keyword::VALUES), _) => {
                 let values = self.parse_comma_separated(|parser|
                     parser.parse_comma_separated_within_parentheses(Self::parse_expr, false)
                 )?
                 .into_iter()
-                .map(|(v, _)| v)
+                .map(|Spanned(v, _)| v)
                 .collect();
 
                 InsertSource::Values(values)
             },
-            (Token::Keyword(Keyword::SELECT), _) => {
+            Spanned(Token::Keyword(Keyword::SELECT), _) => {
                 let select = self.parse_select()?;
                 InsertSource::FromQuery(Box::new(select))
             },
@@ -53,7 +54,10 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{dml::*, expr::*, identifier_from_str, ColumnRef},
+        crate::{
+            ast::{dml::*, expr::*},
+            common::{identifier_from_str, ColumnRef},
+        },
     };
 
     #[test]

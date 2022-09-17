@@ -76,7 +76,7 @@ impl<'a> Lexer<'a> {
                 // check if it escapes a single quote
                 Some((_, '\'')) => _ = self.iter.next(),
                 _ => {
-                    return Some(Ok((Token::String, begin..=i)));
+                    return Some(Ok(Spanned(Token::String, begin..=i)));
                 }
             }
         }
@@ -98,7 +98,10 @@ impl<'a> Lexer<'a> {
         self.iter.next_if(|&(_, c)| c == '+' || c == '-');
         self.iter_next_while(|c| c.is_digit(10));
 
-        Some((Token::Number { is_float }, begin..=self.iter_offset()))
+        Some(Spanned(
+            Token::Number { is_float },
+            begin..=self.iter_offset(),
+        ))
     }
 
     fn scan_identifier(&mut self) -> Option<Spanned<Token>> {
@@ -113,7 +116,7 @@ impl<'a> Lexer<'a> {
             .map(Token::Keyword)
             .unwrap_or(Token::Identifier);
 
-        Some((token, range))
+        Some(Spanned(token, range))
     }
 
     fn scan_symbol(&mut self) -> Option<Spanned<Token>> {
@@ -172,7 +175,7 @@ impl<'a> Lexer<'a> {
             self.iter.next();
         }
 
-        symbol.map(|symbol| (symbol, begin..=self.iter_offset()))
+        symbol.map(|symbol| Spanned(symbol, begin..=self.iter_offset()))
     }
 }
 
@@ -200,7 +203,7 @@ mod tests {
                 let begin = input.find(s).unwrap();
                 let range = begin..=begin + s.len() - 1;
 
-                Ok((token, range))
+                Ok(Spanned(token, range))
             })
             .collect::<Vec<_>>()
     }

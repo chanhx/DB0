@@ -9,7 +9,7 @@ pub use self::error::{Error, Result};
 
 use crate::{
     ast::Statement,
-    common::{MultiPeek, MultiPeekable},
+    common::{MultiPeek, MultiPeekable, Spanned},
     lexer::{Keyword, Lexer, Token},
 };
 
@@ -46,13 +46,13 @@ impl<'a> Parser<'a> {
         self.skip_semicolons();
 
         Some(match self.tokens.next()? {
-            Ok((Token::Keyword(Keyword::CREATE), _)) => self.parse_create(),
-            Ok((Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
-            Ok((Token::Keyword(Keyword::INSERT), _)) => self.parse_insert(),
-            Ok((Token::Keyword(Keyword::SELECT), _)) => {
+            Ok(Spanned(Token::Keyword(Keyword::CREATE), _)) => self.parse_create(),
+            Ok(Spanned(Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
+            Ok(Spanned(Token::Keyword(Keyword::INSERT), _)) => self.parse_insert(),
+            Ok(Spanned(Token::Keyword(Keyword::SELECT), _)) => {
                 self.parse_select().map(|select| Statement::Select(select))
             }
-            Ok((_, span)) => Err(Error::SyntaxError(span)),
+            Ok(Spanned(_, span)) => Err(Error::SyntaxError(span)),
             Err(e) => Err(Error::LexingError(e)),
         })
     }
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::ast::{ddl::*, identifier_from_str},
+        crate::{ast::ddl::*, common::identifier_from_str},
         def::DataType,
     };
 
@@ -104,17 +104,17 @@ mod tests {
                         Column {
                             name: identifier_from_str("b"),
                             data_type: DataType::Varchar(15),
-                            constraints: vec![(ColumnConstraint::NotNull, (180..=187))],
+                            constraints: vec![Spanned(ColumnConstraint::NotNull, 180..=187)],
                         },
                         Column {
                             name: identifier_from_str("c"),
                             data_type: DataType::Integer,
-                            constraints: vec![(ColumnConstraint::Unique, (216..=221))],
+                            constraints: vec![Spanned(ColumnConstraint::Unique, 216..=221)],
                         },
                     ],
-                    constraints: vec![(
+                    constraints: vec![Spanned(
                         TableConstraint::PrimaryKey(vec![identifier_from_str("a")]),
-                        (110..=124),
+                        110..=124,
                     )],
                 },
             })),

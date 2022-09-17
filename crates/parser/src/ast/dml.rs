@@ -1,7 +1,5 @@
 use {
-    super::{expr::Expression, Identifier},
-    common::pub_fields_struct,
-    def::JoinType,
+    super::expr::Expression, crate::common::Identifier, common::pub_fields_struct, def::JoinType,
 };
 
 #[derive(Debug, PartialEq)]

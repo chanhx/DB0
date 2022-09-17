@@ -1,9 +1,8 @@
-mod common;
 pub mod ddl;
 pub mod dml;
 pub mod expr;
 
-pub use self::common::*;
+use crate::common::*;
 
 use self::{ddl::*, dml::*};
 
