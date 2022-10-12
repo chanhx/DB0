@@ -1,12 +1,12 @@
-use crate::{PageId, PAGE_SIZE};
+use crate::{PageNum, PAGE_SIZE};
 
 #[derive(Debug, Clone)]
 #[repr(align(64))]
 struct PageData([u8; PAGE_SIZE]);
 
 #[derive(Debug, Clone)]
-pub(crate) struct Page {
-    pub id: PageId,
+pub struct Page {
+    pub num: PageNum,
     pub is_dirty: bool,
     data: PageData,
 }
@@ -18,9 +18,9 @@ impl Default for Page {
 }
 
 impl Page {
-    pub fn new(id: PageId, data: [u8; PAGE_SIZE]) -> Self {
+    pub fn new(num: PageNum, data: [u8; PAGE_SIZE]) -> Self {
         Self {
-            id,
+            num,
             is_dirty: false,
             data: PageData(data),
         }

@@ -2,11 +2,15 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
+    IO {
+        source: std::io::Error,
+    },
     Internal {
         details: String,
         source: Option<Box<dyn std::error::Error>>,
     },
-    KeyAlreadyExists(String),
+    InvalidPageType(u8),
+    KeyAlreadyExists,
     KeyNotFound(String),
 }
 
@@ -18,6 +22,7 @@ impl std::fmt::Display for Error {
             f,
             "{}",
             match self {
+                Self::IO { source } => format!("IO error: {}", source),
                 Self::Internal { details, source } => {
                     format!(
                         "internal error: {}{}",
@@ -28,7 +33,8 @@ impl std::fmt::Display for Error {
                         }
                     )
                 }
-                Self::KeyAlreadyExists(key) => format!("{} already exists", key),
+                Self::InvalidPageType(ty) => format!("invalid page type {}", ty),
+                Self::KeyAlreadyExists => "key already exists".to_string(),
                 Self::KeyNotFound(key) => format!("{} not found", key),
             }
         )

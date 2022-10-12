@@ -1,7 +1,7 @@
-use super::FrameId;
+use super::BufferId;
 
 pub trait Replacer {
-    fn pin(&mut self, frame_id: FrameId);
-    fn unpin(&mut self, frame_id: FrameId);
-    fn victim(&mut self) -> Option<FrameId>;
+    fn pin(&mut self, buffer_id: BufferId);
+    fn unpin(&mut self, buffer_id: BufferId);
+    fn victim(&mut self) -> Option<BufferId>;
 }

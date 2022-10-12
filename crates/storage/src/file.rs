@@ -1,6 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    fs::{self, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::{Read, Result, Seek, SeekFrom, Write},
     os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
@@ -9,20 +9,14 @@ use std::{
 const O_DIRECT: i32 = 0o0040000;
 
 pub(crate) struct FileManager {
-    dir: PathBuf,
     opened_files: HashMap<PathBuf, File>,
 }
 
 impl FileManager {
-    pub fn new(dir: &Path) -> Result<Self> {
-        if !dir.exists() {
-            fs::create_dir_all(&dir)?;
-        }
-
-        Ok(Self {
-            dir: dir.to_path_buf(),
+    pub fn new() -> Self {
+        Self {
             opened_files: HashMap::new(),
-        })
+        }
     }
 
     fn get_file(&mut self, file_path: &Path) -> Result<&mut File> {
@@ -32,11 +26,11 @@ impl FileManager {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
                 let file = OpenOptions::new()
-                    .create(false)
+                    .create(true)
                     .read(true)
                     .write(true)
                     .custom_flags(O_DIRECT)
-                    .open(self.dir.join(file_path))?;
+                    .open(file_path)?;
 
                 entry.insert(file)
             }
@@ -67,7 +61,7 @@ mod tests {
         let path = NamedTempFile::new().unwrap().into_temp_path();
         let file_name = path.file_name().unwrap();
 
-        let mut manager = FileManager::new(&path.parent().unwrap())?;
+        let mut manager = FileManager::new();
 
         let data_w = [123; PAGE_SIZE];
         let mut data_r = [0; PAGE_SIZE];

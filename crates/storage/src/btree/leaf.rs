@@ -1,12 +1,8 @@
 use {
     super::{Error, InsertEffect, PageType, Result},
-    crate::{
-        buffer::{BufferManager, Replacer},
-        slotted_page::SlottedPage,
-        PageId,
-    },
+    crate::{buffer::Page, slotted_page::SlottedPage, PageNum},
     bytemuck::from_bytes_mut,
-    std::mem::size_of,
+    std::{cell::RefCell, mem::size_of, rc::Rc},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -14,8 +10,8 @@ use {
 struct Header {
     page_type: PageType,
     dirty: bool,
-    prev_page_id: PageId,
-    next_page_id: PageId,
+    prev_page_num: PageNum,
+    next_page_num: PageNum,
 }
 unsafe impl bytemuck::Zeroable for Header {}
 unsafe impl bytemuck::Pod for Header {}
@@ -23,7 +19,7 @@ unsafe impl bytemuck::Pod for Header {}
 pub struct Leaf<'a> {
     header: &'a mut Header,
     pub slotted_page: SlottedPage<'a>,
-    page_id: PageId,
+    page_num: PageNum,
     capacity: usize,
     key_size: u16,
     value_size: u32,
@@ -31,7 +27,7 @@ pub struct Leaf<'a> {
 
 impl<'a> Leaf<'a> {
     pub fn new(
-        page_id: PageId,
+        page_num: PageNum,
         bytes: &'a mut [u8],
         capacity: usize,
         key_size: u16,
@@ -42,17 +38,17 @@ impl<'a> Leaf<'a> {
         Self {
             header: from_bytes_mut(header),
             slotted_page: SlottedPage::new(bytes),
-            page_id,
+            page_num,
             capacity,
             key_size,
             value_size,
         }
     }
 
-    pub fn init(&mut self, next_page_id: PageId, prev_page_id: PageId) {
+    pub fn init(&mut self, next_page_num: PageNum, prev_page_num: PageNum) {
         self.header.page_type = PageType::Leaf;
-        self.header.next_page_id = next_page_id;
-        self.header.prev_page_id = prev_page_id;
+        self.header.next_page_num = next_page_num;
+        self.header.prev_page_num = prev_page_num;
 
         self.slotted_page.init();
     }
@@ -98,12 +94,16 @@ impl<'a> Leaf<'a> {
             .map(|slot| self.get_key_value(slot.offset()).0)
     }
 
-    pub fn insert<R: Replacer>(
+    pub fn insert<F>(
         &mut self,
         key: &[u8],
         value: &[u8],
-        manager: &mut BufferManager<R>,
-    ) -> Result<Option<InsertEffect>> {
+
+        mut create_page: F,
+    ) -> Result<Option<InsertEffect>>
+    where
+        F: FnMut() -> Result<Rc<RefCell<Page>>>,
+    {
         let slots = self.slotted_page.slots();
 
         let index =
@@ -138,20 +138,17 @@ impl<'a> Leaf<'a> {
         }
 
         // TODO: rebalance
-        let splited_page = manager.new_page().map_err(|err| Error::Internal {
-            details: "create new page".to_string(),
-            source: Some(Box::new(err)),
-        })?;
+        let splited_page = create_page()?;
         let mut splited_page = splited_page.borrow_mut();
 
         let mut splited_leaf = Leaf::new(
-            splited_page.id,
+            splited_page.num,
             splited_page.data_mut(),
             self.capacity,
             self.key_size,
             self.value_size,
         );
-        splited_leaf.init(0, self.page_id);
+        splited_leaf.init(0, self.page_num);
 
         let slots_count = self.slotted_page.slot_count() / 2;
         self.slotted_page
@@ -160,14 +157,14 @@ impl<'a> Leaf<'a> {
         let new_key = self.high_key().unwrap().to_vec();
         let splited_high_key = splited_leaf.high_key().unwrap().to_vec();
 
-        self.header.next_page_id = splited_page.id;
+        self.header.next_page_num = splited_page.num;
 
         splited_page.is_dirty = true;
 
         Ok(Some(InsertEffect::Split {
             new_key,
             splited_high_key,
-            splited_page_id: splited_page.id,
+            splited_page_num: splited_page.num,
         }))
     }
 

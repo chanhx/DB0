@@ -1,65 +1,113 @@
+mod branch;
 mod error;
-mod page;
+mod leaf;
+mod meta;
+mod node;
 
 use {
-    self::page::{Branch, InsertEffect, Leaf, Meta, Node},
-    crate::{
-        buffer::{BufferManager, Replacer},
-        PageId,
+    self::{
+        branch::Branch,
+        leaf::Leaf,
+        meta::Meta,
+        node::{InsertEffect, Node},
     },
+    crate::{
+        buffer::{BufferManager, FileNode, Page, PageTag, Replacer},
+        PageNum,
+    },
+    std::{cell::RefCell, rc::Rc},
 };
 
 pub use error::{Error, Result};
 
+#[derive(Debug, Copy, Clone)]
+#[repr(u8)]
+pub enum PageType {
+    Deleted = 0,
+    Meta = 1,
+    Branch = 2,
+    Leaf = 3,
+}
+
+const META_PAGE_NUM: PageNum = 0;
+
 pub struct BTree {
-    meta_page_id: PageId,
-    root_page_id: PageId,
     node_capacity: usize,
     key_size: u16,
     value_size: u32,
+    file_node: FileNode,
+
+    // TODO: there should be a manager or something records the pages count of every table in memory,
+    // neither by the btree struct, nor by the meta page
+    page_count: u32,
 }
 
 impl BTree {
     pub fn new<R: Replacer>(
         manager: &mut BufferManager<R>,
-        node_capacity: usize,
+        node_capacity: u32,
         key_size: u16,
         value_size: u32,
+        file_node: FileNode,
     ) -> Result<Self> {
-        let meta_page = manager.new_page().map_err(|err| Error::Internal {
-            details: "create new page".to_string(),
-            source: Some(Box::new(err)),
-        })?;
+        let mut btree = Self {
+            node_capacity: node_capacity as usize,
+            key_size,
+            value_size,
+            file_node,
+            page_count: 0,
+        };
+
+        let meta_page = btree.create_page(manager)?;
         let mut meta_page = meta_page.borrow_mut();
         let meta = Meta::new(meta_page.data_mut());
-        meta.init(key_size, value_size);
+        meta.init(key_size, value_size, node_capacity);
 
-        let root_page = manager.new_page().map_err(|err| Error::Internal {
-            details: "create new page".to_string(),
-            source: Some(Box::new(err)),
-        })?;
+        let root_page = btree.create_page(manager)?;
         let mut root_page = root_page.borrow_mut();
 
         let mut root = Leaf::new(
-            root_page.id,
+            root_page.num,
             root_page.data_mut(),
-            node_capacity,
+            node_capacity as usize,
             key_size,
             value_size,
         );
         root.init(0, 0);
-        meta.root = root_page.id;
+        meta.root = root_page.num;
 
         root_page.is_dirty = true;
         meta_page.is_dirty = true;
 
-        Ok(Self {
-            meta_page_id: meta_page.id,
-            root_page_id: root_page.id,
-            node_capacity,
-            key_size,
-            value_size,
-        })
+        Ok(btree)
+    }
+
+    fn init<R: Replacer>(file_node: FileNode, manager: &mut BufferManager<R>) -> Result<Self> {
+        let mut btree = Self {
+            node_capacity: 0,
+            key_size: 0,
+            value_size: 0,
+            file_node,
+            page_count: 0,
+        };
+
+        let meta_page = btree.fetch_page(manager, META_PAGE_NUM)?;
+        let mut meta_page = meta_page.borrow_mut();
+        let meta = Meta::new(meta_page.data_mut());
+
+        btree.node_capacity = meta.node_capacity as usize;
+        btree.key_size = meta.key_size;
+        btree.value_size = meta.value_size;
+
+        // btree.page_count =
+
+        Ok(btree)
+    }
+
+    fn root_page_num<R: Replacer>(&self, manager: &mut BufferManager<R>) -> Result<PageNum> {
+        let meta_page = self.fetch_page(manager, META_PAGE_NUM)?;
+        let mut meta_page = meta_page.borrow_mut();
+        Ok(Meta::new(meta_page.data_mut()).root)
     }
 
     pub fn insert<R: Replacer>(
@@ -68,19 +116,16 @@ impl BTree {
         key: &[u8],
         value: &[u8],
     ) -> Result<()> {
-        let mut page_id = self.root_page_id;
+        let mut page_num = self.root_page_num(manager)?;
         let mut insert_effect;
         let mut stack = None;
 
         loop {
-            let page = manager.fetch_page(page_id).map_err(|err| Error::Internal {
-                details: format!("fetch page {}", self.root_page_id),
-                source: Some(Box::new(err)),
-            })?;
+            let page = self.fetch_page(manager, page_num)?;
             let mut page = page.borrow_mut();
 
             let node = Node::new(
-                page_id,
+                page_num,
                 page.data_mut(),
                 self.node_capacity,
                 self.key_size as usize,
@@ -93,18 +138,21 @@ impl BTree {
 
             match node {
                 Node::Branch(branch) => {
-                    let (slot_num, child_page_id) = branch.find_child(key);
+                    let (slot_num, child_page_num) = branch.find_child(key);
 
                     stack = Some(Box::new(StackNode {
-                        page_id,
+                        page_num,
                         slot_num,
                         parent: stack,
                     }));
 
-                    page_id = child_page_id;
+                    page_num = child_page_num;
                 }
                 Node::Leaf(mut leaf) => {
-                    if let Some(effect) = leaf.insert(key, value, manager).unwrap() {
+                    if let Some(effect) = leaf
+                        .insert(key, value, || self.create_page(manager))
+                        .unwrap()
+                    {
                         insert_effect = effect;
                         break;
                     }
@@ -116,13 +164,10 @@ impl BTree {
 
         loop {
             if let Some(stk) = stack {
-                page_id = stk.page_id;
+                page_num = stk.page_num;
                 stack = stk.parent;
 
-                let page = manager.fetch_page(page_id).map_err(|err| Error::Internal {
-                    details: format!("fetch page {}", page_id),
-                    source: Some(Box::new(err)),
-                })?;
+                let page = self.fetch_page(manager, page_num)?;
                 let mut page = page.borrow_mut();
 
                 let mut branch = Branch::new(page.data_mut(), self.node_capacity, self.key_size);
@@ -137,15 +182,16 @@ impl BTree {
                     InsertEffect::Split {
                         new_key,
                         splited_high_key,
-                        splited_page_id,
+                        splited_page_num,
                     } => {
                         if stk.slot_num == branch.slotted_page.slot_count() - 1 {
                             branch.update_high_key(&splited_high_key);
                         }
 
                         // TODO: insert into slot directly by stack information without searching
-                        if let Some(effect) =
-                            branch.insert(&new_key, splited_page_id, manager).unwrap()
+                        if let Some(effect) = branch
+                            .insert(&new_key, splited_page_num, || self.create_page(manager))
+                            .unwrap()
                         {
                             insert_effect = effect
                         } else {
@@ -158,32 +204,25 @@ impl BTree {
                     InsertEffect::Split {
                         new_key,
                         splited_high_key,
-                        splited_page_id,
+                        splited_page_num,
                     } => {
-                        let meta_page = manager.fetch_page(self.meta_page_id).map_err(|err| {
-                            Error::Internal {
-                                details: format!("fetch page {}", self.meta_page_id),
-                                source: Some(Box::new(err)),
-                            }
-                        })?;
+                        let meta_page = self.fetch_page(manager, META_PAGE_NUM)?;
                         let mut meta_page = meta_page.borrow_mut();
                         let meta = Meta::new(meta_page.data_mut());
 
-                        let root_page = manager.new_page().map_err(|err| Error::Internal {
-                            details: "create new page".to_string(),
-                            source: Some(Box::new(err)),
-                        })?;
-                        let mut root_page = root_page.borrow_mut();
+                        let new_root_page = self.create_page(manager)?;
+                        let mut new_root_page = new_root_page.borrow_mut();
 
-                        let mut root =
-                            Branch::new(root_page.data_mut(), self.node_capacity, self.key_size);
-                        root.init(&new_key, &splited_high_key, page_id, splited_page_id, 0);
+                        let mut new_root = Branch::new(
+                            new_root_page.data_mut(),
+                            self.node_capacity,
+                            self.key_size,
+                        );
+                        new_root.init(&new_key, &splited_high_key, page_num, splited_page_num, 0);
 
-                        meta.root = root_page.id;
+                        meta.root = new_root_page.num;
                         meta_page.is_dirty = true;
-                        root_page.is_dirty = true;
-
-                        self.root_page_id = root_page.id;
+                        new_root_page.is_dirty = true;
                     }
                     _ => {}
                 }
@@ -199,17 +238,14 @@ impl BTree {
         manager: &mut BufferManager<R>,
         key: &[u8],
     ) -> Result<Option<Vec<u8>>> {
-        let mut page_id = self.root_page_id;
+        let mut page_num = self.root_page_num(manager)?;
 
         loop {
-            let page = manager.fetch_page(page_id).map_err(|err| Error::Internal {
-                details: format!("fetch page {}", self.root_page_id),
-                source: Some(Box::new(err)),
-            })?;
+            let page = self.fetch_page(manager, page_num)?;
             let mut page = page.borrow_mut();
 
             let node = Node::new(
-                page_id,
+                page_num,
                 page.data_mut(),
                 self.node_capacity,
                 self.key_size as usize,
@@ -222,7 +258,7 @@ impl BTree {
 
             match node {
                 Node::Branch(branch) => {
-                    (_, page_id) = branch.find_child(key);
+                    (_, page_num) = branch.find_child(key);
                 }
                 Node::Leaf(leaf) => {
                     return Ok(leaf.search_by_key(key).map(|v| v.to_vec()));
@@ -231,8 +267,49 @@ impl BTree {
         }
     }
 
+    fn fetch_page<R: Replacer>(
+        &self,
+        manager: &mut BufferManager<R>,
+        page_num: PageNum,
+    ) -> Result<Rc<RefCell<Page>>> {
+        let page_tag = PageTag {
+            file_node: self.file_node,
+            page_num,
+        };
+
+        manager.fetch_page(page_tag).map_err(|err| Error::Internal {
+            details: format!("fetch page {}", page_num),
+            source: Some(Box::new(err)),
+        })
+    }
+
+    fn create_page<R: Replacer>(
+        &mut self,
+        manager: &mut BufferManager<R>,
+    ) -> Result<Rc<RefCell<Page>>> {
+        let page_tag = PageTag {
+            file_node: self.file_node,
+            page_num: self.page_count,
+        };
+
+        // TODO: inspect
+        manager
+            .new_page(page_tag)
+            .map(|page| {
+                self.page_count += 1;
+                page
+            })
+            // .inspect(|_| self.page_count += 1)
+            .map_err(|err| Error::Internal {
+                details: "create new page".to_string(),
+                source: Some(Box::new(err)),
+            })
+    }
+
+    // #[cfg(test)]
     // fn print_tree<R: Replacer>(&self, manager: &mut BufferManager<R>) -> Result<()> {
-    //     let mut v = std::collections::VecDeque::from([self.root_page_id]);
+    //     let root_page_num = self.root_page_num(manager)?;
+    //     let mut v = std::collections::VecDeque::from([root_page_num]);
 
     //     loop {
     //         let len = v.len();
@@ -241,16 +318,13 @@ impl BTree {
     //         }
 
     //         for _ in 0..len {
-    //             let page_id = v.pop_front().unwrap();
+    //             let page_num = v.pop_front().unwrap();
 
-    //             let page = manager.fetch_page(page_id).map_err(|err| Error::Internal {
-    //                 details: format!("fetch page {}", self.root_page_id),
-    //                 source: Some(Box::new(err)),
-    //             })?;
+    //             let page = self.fetch_page(manager, page_num)?;
     //             let mut page = page.borrow_mut();
 
     //             let node = Node::new(
-    //                 page_id,
+    //                 page_num,
     //                 page.data_mut(),
     //                 self.node_capacity,
     //                 self.key_size as usize,
@@ -277,7 +351,7 @@ impl BTree {
     //                     let slots = leaf.slotted_page.slots();
 
     //                     slots.iter().for_each(|slot| {
-    //                         let (key, value) = leaf.get_key_value(slot.offset());
+    //                         let (key, _) = leaf.get_key_value(slot.offset());
     //                         print!("({}), ", key[0]);
     //                     });
     //                 }
@@ -295,63 +369,30 @@ impl BTree {
 
 struct StackNode {
     slot_num: usize,
-    page_id: PageId,
+    page_num: PageNum,
     parent: Option<Box<StackNode>>,
 }
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::{buffer::LruReplacer, PAGE_SIZE},
-        rand::prelude::*,
-        std::io::Read,
-        tempfile::NamedTempFile,
-    };
-
-    #[test]
-    fn meta_info() -> Result<()> {
-        let (mut file, path) = NamedTempFile::new().unwrap().into_parts();
-
-        let size = 10;
-        let replacer = LruReplacer::new(size);
-
-        let mut buffer_manager = BufferManager::new(&path, size, replacer);
-        let btree = BTree::new(&mut buffer_manager, 10, 0, 0)?;
-
-        let meta_page_id = btree.meta_page_id;
-        let root_page_id = btree.root_page_id;
-
-        buffer_manager.flush_page(meta_page_id).unwrap();
-        buffer_manager.flush_page(root_page_id).unwrap();
-
-        let mut buf = [0; PAGE_SIZE];
-        file.read_exact(&mut buf).unwrap();
-
-        assert_eq!(buf[0], 0x01);
-        assert_eq!(buf[2], (PAGE_SIZE & 0xFF) as u8);
-        assert_eq!(buf[3], ((PAGE_SIZE >> 8) & 0xFF) as u8);
-
-        assert_eq!(buf[24], (root_page_id & 0xFF) as u8);
-
-        Ok(())
-    }
+    use {super::*, crate::buffer::LruReplacer, rand::prelude::*, std::num::NonZeroUsize};
 
     #[test]
     fn sequential_insertion() -> Result<()> {
-        let (_, path) = NamedTempFile::new().unwrap().into_parts();
-
-        let size = 10;
+        let size = NonZeroUsize::new(10).unwrap();
         let replacer = LruReplacer::new(size);
 
-        let mut manager = BufferManager::new(&path, size, replacer);
-        let mut btree = BTree::new(&mut manager, 30, 0, 0)?;
+        let mut manager = BufferManager::new(size, replacer);
+        let file_node = FileNode { table_id: 123 };
+        let mut btree = BTree::new(&mut manager, 30, 0, 0, file_node)?;
 
-        for i in 0..120 {
+        let range = 0..120;
+
+        for i in range.clone() {
             btree.insert(&mut manager, &[i], &[i * 2 + 5])?;
         }
 
-        for i in 0..120 {
+        for i in range {
             let btree_value = btree.search_by_key(&mut manager, &[i]).unwrap().unwrap();
 
             assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
@@ -362,13 +403,12 @@ mod tests {
 
     #[test]
     fn random_insertion() -> Result<()> {
-        let (_, path) = NamedTempFile::new().unwrap().into_parts();
-
-        let size = 10;
+        let size = NonZeroUsize::new(10).unwrap();
         let replacer = LruReplacer::new(size);
 
-        let mut manager = BufferManager::new(&path, size, replacer);
-        let mut btree = BTree::new(&mut manager, 30, 0, 0)?;
+        let mut manager = BufferManager::new(size, replacer);
+        let file_node = FileNode { table_id: 123 };
+        let mut btree = BTree::new(&mut manager, 30, 0, 0, file_node)?;
 
         let mut rng = rand::thread_rng();
         let mut nums: Vec<u8> = (0..120).collect();
@@ -378,8 +418,6 @@ mod tests {
             btree.insert(&mut manager, &[i], &[i * 2 + 5])?;
         }
 
-        // btree.print_tree(&mut manager)?;
-
         for &i in nums.iter() {
             let btree_value = btree.search_by_key(&mut manager, &[i]).unwrap().unwrap();
 
@@ -388,4 +426,42 @@ mod tests {
 
         Ok(())
     }
+
+    // #[test]
+    // fn flush() -> Result<()> {
+    //     let size = NonZeroUsize::new(10).unwrap();
+    //     let replacer = LruReplacer::new(size);
+
+    //     let mut manager = BufferManager::new(size, replacer);
+    //     let file_node = FileNode { table_id: 123 };
+    //     let mut btree = BTree::new(&mut manager, 30, 0, 0, file_node)?;
+
+    //     let range = 0..120;
+
+    //     for i in range.clone() {
+    //         btree.insert(&mut manager, &[i], &[i * 2 + 5])?;
+    //     }
+
+    //     // let page_count = btree.page_count;
+    //     // for i in 0..page_count {
+    //     //     let page_tag = PageTag {
+    //     //         file_node,
+    //     //         page_num: i,
+    //     //     };
+    //     //     manager.flush_page(&page_tag).map_err(|e| Error::Internal {
+    //     //         details: "flush page error".to_string(),
+    //     //         source: Some(Box::new(e)),
+    //     //     })?;
+    //     // }
+
+    //     let btree2 = BTree::init(file_node, &mut manager)?;
+
+    //     for i in range {
+    //         let btree_value = btree2.search_by_key(&mut manager, &[i]).unwrap().unwrap();
+
+    //         assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
+    //     }
+
+    //     Ok(())
+    // }
 }

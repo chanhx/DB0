@@ -7,7 +7,10 @@ edition = "2021"
 
 [dependencies]
 bytemuck = "1.10"
-lru = "0.7"
+lru = "0.8"
+
+common = { path = "../common" }
+def = { path = "../def" }
 
 [dev-dependencies]
 rand = "0.8"

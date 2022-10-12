@@ -1,22 +1,18 @@
 use {
-    super::{Error, InsertEffect, Node, PageType, Result},
-    crate::{
-        buffer::{BufferManager, Replacer},
-        slotted_page::SlottedPage,
-        PageId,
-    },
+    super::{node::InsertEffect, Error, PageType, Result},
+    crate::{buffer::Page, slotted_page::SlottedPage, PageNum},
     bytemuck::from_bytes_mut,
-    std::mem::size_of,
+    std::{cell::RefCell, mem::size_of, rc::Rc},
 };
 
-const PAGE_ID_SIZE: usize = size_of::<PageId>();
+const PAGE_NUM_SIZE: usize = size_of::<PageNum>();
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 struct Header {
     page_type: PageType,
     dirty: bool,
-    next_sibling: PageId,
+    next_sibling: PageNum,
 }
 unsafe impl bytemuck::Zeroable for Header {}
 unsafe impl bytemuck::Pod for Header {}
@@ -32,8 +28,11 @@ impl<'a> Branch<'a> {
     pub fn new(bytes: &'a mut [u8], capacity: usize, key_size: u16) -> Self {
         let (header, bytes) = bytes.split_at_mut(size_of::<Header>());
 
+        let header = from_bytes_mut::<Header>(header);
+        header.page_type = PageType::Branch;
+
         Self {
-            header: from_bytes_mut(header),
+            header,
             slotted_page: SlottedPage::new(bytes),
             capacity,
             key_size,
@@ -44,9 +43,9 @@ impl<'a> Branch<'a> {
         &mut self,
         key: &[u8],
         high_key: &[u8],
-        left: PageId,
-        right: PageId,
-        sibling: PageId,
+        left: PageNum,
+        right: PageNum,
+        sibling: PageNum,
     ) {
         self.header.page_type = PageType::Branch;
         self.slotted_page.init();
@@ -77,7 +76,7 @@ impl<'a> Branch<'a> {
         self.header.next_sibling = sibling;
     }
 
-    pub fn get_key_value(&self, offset: usize) -> (&[u8], PageId) {
+    pub fn get_key_value(&self, offset: usize) -> (&[u8], PageNum) {
         let (start, key_size) = match self.key_size as usize {
             0 => {
                 let bytes = self.slotted_page.get_range(offset..offset + 2);
@@ -90,9 +89,9 @@ impl<'a> Branch<'a> {
 
         (
             self.slotted_page.get_range(start..start + key_size),
-            PageId::from_le_bytes(
+            PageNum::from_le_bytes(
                 self.slotted_page
-                    .get_range(start + key_size..start + key_size + PAGE_ID_SIZE)
+                    .get_range(start + key_size..start + key_size + PAGE_NUM_SIZE)
                     .try_into()
                     .unwrap(),
             ),
@@ -104,12 +103,15 @@ impl<'a> Branch<'a> {
         self.get_key_value(slot.offset()).0
     }
 
-    pub fn insert<R: Replacer>(
+    pub fn insert<F>(
         &mut self,
         key: &[u8],
-        page_id: PageId,
-        manager: &mut BufferManager<R>,
-    ) -> Result<Option<InsertEffect>> {
+        page_num: PageNum,
+        mut create_page: F,
+    ) -> Result<Option<InsertEffect>>
+    where
+        F: FnMut() -> Result<Rc<RefCell<Page>>>,
+    {
         let slots = self.slotted_page.slots();
 
         let index =
@@ -128,17 +130,17 @@ impl<'a> Branch<'a> {
         let update_high_key = index == slots.len() - 1;
 
         let slot = slots[index];
-        let (_, next_page_id) = self.get_key_value(slot.offset());
-        let next_page_id = &next_page_id.to_le_bytes();
+        let (_, next_page_num) = self.get_key_value(slot.offset());
+        let next_page_num = &next_page_num.to_le_bytes();
 
         let data = match self.key_size {
             0 => [
                 (key.len() as u16).to_le_bytes().as_slice(),
                 key,
-                next_page_id,
+                next_page_num,
             ]
             .concat(),
-            _ => [key, next_page_id].concat(),
+            _ => [key, next_page_num].concat(),
         };
 
         self.slotted_page
@@ -148,10 +150,10 @@ impl<'a> Branch<'a> {
                 source: Some(Box::new(err)),
             })?;
 
-        let page_id = &page_id.to_le_bytes();
-        let next_page_id_offset = slot.offset() + slot.len() - PAGE_ID_SIZE;
-        let next_page_id_range = next_page_id_offset..next_page_id_offset + PAGE_ID_SIZE;
-        self.slotted_page.body[next_page_id_range].copy_from_slice(page_id);
+        let page_num = &page_num.to_le_bytes();
+        let next_page_num_offset = slot.offset() + slot.len() - PAGE_NUM_SIZE;
+        let next_page_num_range = next_page_num_offset..next_page_num_offset + PAGE_NUM_SIZE;
+        self.slotted_page.body[next_page_num_range].copy_from_slice(page_num);
 
         if self.slotted_page.slot_count() <= self.capacity {
             return Ok(if update_high_key {
@@ -162,16 +164,12 @@ impl<'a> Branch<'a> {
         }
 
         // TODO: rebalance
-        let splited_page = manager.new_page().map_err(|err| Error::Internal {
-            details: "create new page".to_string(),
-            source: Some(Box::new(err)),
-        })?;
+        let splited_page = create_page()?;
         let mut splited_page = splited_page.borrow_mut();
 
         let mut splited_branch = Branch::new(splited_page.data_mut(), self.capacity, self.key_size);
-        splited_branch.header.page_type = PageType::Branch;
-        splited_branch.slotted_page.init();
         splited_branch.header.next_sibling = self.header.next_sibling;
+        splited_branch.slotted_page.init();
 
         let slots_count = (self.slotted_page.slot_count() - 1) / 2;
         self.slotted_page
@@ -181,32 +179,13 @@ impl<'a> Branch<'a> {
         splited_page.is_dirty = true;
 
         let new_key = self.high_key().to_vec();
-        let slot = self.slotted_page.slots().last().unwrap();
-        let last_child_id = self.get_key_value(slot.offset()).1;
 
-        let page = manager
-            .fetch_page(last_child_id)
-            .map_err(|err| Error::Internal {
-                details: format!("fetch page {}", last_child_id),
-                source: Some(Box::new(err)),
-            })?;
-        let mut page = page.borrow_mut();
-
-        let last_child = Node::new(
-            last_child_id,
-            page.data_mut(),
-            self.capacity,
-            self.key_size as usize,
-            PAGE_ID_SIZE,
-        )?;
-
-        self.update_high_key(last_child.high_key().unwrap());
-        self.header.next_sibling = splited_page.id;
+        self.header.next_sibling = splited_page.num;
 
         Ok(Some(InsertEffect::Split {
             new_key,
             splited_high_key,
-            splited_page_id: splited_page.id,
+            splited_page_num: splited_page.num,
         }))
     }
 
@@ -214,15 +193,15 @@ impl<'a> Branch<'a> {
         let slot = self.slotted_page.slots().last().unwrap();
         let offset = slot.offset();
 
-        let (key, page_id) = self.get_key_value(offset);
-        let page_id = &page_id.to_le_bytes();
+        let (key, page_num) = self.get_key_value(offset);
+        let page_num = &page_num.to_le_bytes();
 
         match self.key_size {
             0 => {
                 let data = [
                     (high_key.len() as u16).to_le_bytes().as_slice(),
                     high_key,
-                    page_id,
+                    page_num,
                 ]
                 .concat();
 
@@ -235,7 +214,7 @@ impl<'a> Branch<'a> {
             }
             _ => {
                 let range = slot.range();
-                self.slotted_page.body[range].copy_from_slice(&[high_key, page_id].concat())
+                self.slotted_page.body[range].copy_from_slice(&[high_key, page_num].concat())
             }
         }
     }
@@ -252,7 +231,7 @@ impl<'a> Branch<'a> {
         self.slotted_page.delete(index).ok()
     }
 
-    pub fn find_child(&self, key: &[u8]) -> (usize, PageId) {
+    pub fn find_child(&self, key: &[u8]) -> (usize, PageNum) {
         let slots = self.slotted_page.slots();
 
         let index =
@@ -263,41 +242,5 @@ impl<'a> Branch<'a> {
             };
 
         (index, self.get_key_value(slots[index].offset()).1)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use {
-        super::*,
-        crate::buffer::{BufferManager, LruReplacer},
-        tempfile::NamedTempFile,
-    };
-
-    #[test]
-    fn insert_without_split() -> Result<()> {
-        let (_, path) = NamedTempFile::new().unwrap().into_parts();
-
-        let size = 10;
-        let replacer = LruReplacer::new(size);
-
-        let mut manager = BufferManager::new(&path, size, replacer);
-        let page = manager.new_page().map_err(|err| Error::Internal {
-            details: "create new page".to_string(),
-            source: Some(Box::new(err)),
-        })?;
-        let mut page = page.borrow_mut();
-
-        let mut branch = Branch::new(page.data_mut(), 3, 0);
-        branch.init(&[1], &[3], 1, 2, 0);
-
-        let res = branch.insert(&[2], 4, &mut manager);
-
-        assert!(res.is_ok());
-        let res = res.unwrap();
-
-        assert!(res.is_none());
-
-        Ok(())
     }
 }
