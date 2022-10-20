@@ -19,30 +19,22 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(src: &'a str) -> Self {
+    pub(crate) fn new(src: &'a str) -> Self {
         Self {
             src,
             tokens: Lexer::new(src).multi_peekable(),
         }
     }
 
-    pub fn parse(sql: &'a str) -> Vec<Result<Statement>> {
-        let mut parser = Self::new(sql);
-
-        let mut stmts = Vec::new();
-        while let Some(stmt) = parser.parse_statement() {
-            let met_err = stmt.is_err();
-            stmts.push(stmt);
-
-            if met_err {
-                break;
-            }
-        }
-
-        stmts
+    pub fn parse(sql: &'a str) -> Result<Vec<Statement>> {
+        Self::new(sql).into_iter().collect()
     }
+}
 
-    fn parse_statement(&mut self) -> Option<Result<Statement>> {
+impl<'a> Iterator for Parser<'a> {
+    type Item = Result<Statement>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         self.skip_semicolons();
 
         Some(match self.tokens.next()? {
@@ -86,12 +78,12 @@ mod tests {
             CREATE unique INDEX hello on abc (a);
         ";
 
-        let expected_output: Vec<Result<_>> = vec![
-            Ok(Statement::CreateDatabase {
+        let expected_output = vec![
+            Statement::CreateDatabase {
                 if_not_exists: true,
                 name: identifier_from_str("abc"),
-            }),
-            Ok(Statement::CreateTable(CreateTableStmt {
+            },
+            Statement::CreateTable(CreateTableStmt {
                 if_not_exists: true,
                 name: identifier_from_str("abc"),
                 table_schema: TableSchema {
@@ -117,28 +109,28 @@ mod tests {
                         110..=124,
                     )],
                 },
-            })),
-            Ok(Statement::DropDatabase {
+            }),
+            Statement::DropDatabase {
                 name: identifier_from_str("abc"),
-            }),
-            Ok(Statement::DropTable {
+            },
+            Statement::DropTable {
                 name: identifier_from_str("a123"),
-            }),
-            Ok(Statement::CreateIndex {
+            },
+            Statement::CreateIndex {
                 is_unique: false,
                 name: identifier_from_str("hi"),
                 table: identifier_from_str("abc"),
                 columns: vec![identifier_from_str("a"), identifier_from_str("b")],
-            }),
-            Ok(Statement::CreateIndex {
+            },
+            Statement::CreateIndex {
                 is_unique: true,
                 name: identifier_from_str("hello"),
                 table: identifier_from_str("abc"),
                 columns: vec![identifier_from_str("a")],
-            }),
+            },
         ];
 
-        let output = Parser::parse(sql);
+        let output = Parser::parse(sql).unwrap();
 
         assert_eq!(output.len(), expected_output.len());
         std::iter::zip(output, expected_output).for_each(|(a, b)| {

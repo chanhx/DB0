@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn it_works() {
         let input = "SELECT a, d.e AS de FROM abc INNER JOIN def as d ON abc.a = d.f WHERE c = 0;";
-        let expected_output = vec![Ok(Statement::Select(Query {
+        let expected_output = vec![Statement::Select(Query {
             distinct: false,
             targets: vec![
                 TargetElem::Expr {
@@ -192,9 +192,9 @@ mod tests {
                 })),
                 Box::new(Expression::Literal(Literal::Integer(0))),
             ))),
-        }))];
+        })];
 
-        let output = Parser::parse(input);
+        let output = Parser::parse(input).unwrap();
 
         assert_eq!(output, expected_output);
     }

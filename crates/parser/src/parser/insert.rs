@@ -67,7 +67,7 @@ mod tests {
             INSERT INTO def SELECT a, b FROM abc;
         ";
         let expected_output = vec![
-            Ok(Statement::Insert {
+            Statement::Insert {
                 table: identifier_from_str("abc"),
                 columns: Some(vec![
                     identifier_from_str("a"),
@@ -79,8 +79,8 @@ mod tests {
                     Expression::Literal(Literal::Float(3.14)),
                     Expression::Literal(Literal::Boolean(true)),
                 ]]),
-            }),
-            Ok(Statement::Insert {
+            },
+            Statement::Insert {
                 table: identifier_from_str("def"),
                 columns: None,
                 source: InsertSource::FromQuery(Box::new(Query {
@@ -110,10 +110,10 @@ mod tests {
                     }),
                     cond: None,
                 })),
-            }),
+            },
         ];
 
-        let output = Parser::parse(input);
+        let output = Parser::parse(input).unwrap();
 
         assert_eq!(output, expected_output);
     }
