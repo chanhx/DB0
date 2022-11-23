@@ -45,7 +45,11 @@ impl FileManager {
     }
 
     pub fn write(&mut self, file_path: &Path, offset: u64, data: &[u8]) -> Result<()> {
-        let file = self.get_file(file_path)?;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .custom_flags(O_DIRECT)
+            .open(file_path)?;
 
         file.seek(SeekFrom::Start(offset))?;
         file.write_all(data)

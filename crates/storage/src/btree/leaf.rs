@@ -1,5 +1,5 @@
 use {
-    super::{Error, InsertEffect, PageType, Result},
+    super::{error, InsertEffect, PageType, Result},
     crate::{buffer::Page, slotted_page::SlottedPage, PageNum},
     bytemuck::from_bytes_mut,
     std::{cell::RefCell, mem::size_of, rc::Rc},
@@ -108,7 +108,7 @@ impl<'a> Leaf<'a> {
 
         let index =
             match slots.binary_search_by(|&slot| self.get_key_value(slot.offset()).0.cmp(key)) {
-                Ok(_) => return Err(Error::KeyAlreadyExists),
+                Ok(_) => return Err(error::DuplicateKeySnafu.build()),
                 Err(i) => i,
             };
 

@@ -1,7 +1,7 @@
 use {
     super::{
         branch::Branch,
-        error::{Error, Result},
+        error::{self, Result},
         leaf::Leaf,
     },
     crate::PageNum,
@@ -29,7 +29,7 @@ impl Node<'_> {
                 key_size as u16,
                 value_size as u32,
             )),
-            ty => return Err(Error::InvalidPageType(ty)),
+            ty => return Err(error::InvalidPageTypeSnafu { page_type: ty }.build()),
         })
     }
 }

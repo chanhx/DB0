@@ -1,34 +1,25 @@
-pub type Result<T> = std::result::Result<T, Error>;
+use {
+    super::PageTag,
+    snafu::prelude::*,
+    std::{backtrace::Backtrace, io},
+};
 
-#[derive(Debug)]
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(super)))]
 pub enum Error {
-    Internal {
-        details: String,
-        source: Option<Box<dyn std::error::Error>>,
+    Io {
+        backtrace: Backtrace,
+        source: io::Error,
     },
-    BufferPoolIsFull,
+
+    #[snafu(display("page is not in buffer"))]
+    PageNotInBuffer {
+        backtrace: Backtrace,
+        page_tag: PageTag,
+    },
+
+    #[snafu(display("buffer pool has no more buffer to offer"))]
+    NoMoreBuffer { backtrace: Option<Backtrace> },
 }
 
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Internal { details, source } => {
-                    format!(
-                        "internal error: {}{}",
-                        details,
-                        match source {
-                            Some(err) => format!(", source: {}", err),
-                            None => "".to_string(),
-                        }
-                    )
-                }
-                Self::BufferPoolIsFull => format!("buffer pool is full"),
-            }
-        )
-    }
-}
+pub type Result<T> = std::result::Result<T, Error>;

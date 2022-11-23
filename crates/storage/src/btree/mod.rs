@@ -19,6 +19,7 @@ use {
 };
 
 pub use error::{Error, Result};
+use snafu::ResultExt;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
@@ -63,6 +64,7 @@ impl BTree {
         let meta = Meta::new(meta_page.data_mut());
         meta.init(key_size, value_size, node_capacity);
 
+        // TODO: create root page when it is needed
         let root_page = btree.create_page(manager)?;
         let mut root_page = root_page.borrow_mut();
 
@@ -130,11 +132,7 @@ impl BTree {
                 self.node_capacity,
                 self.key_size as usize,
                 self.value_size as usize,
-            )
-            .map_err(|err| Error::Internal {
-                details: "".to_string(),
-                source: Some(Box::new(err)),
-            })?;
+            )?;
 
             match node {
                 Node::Branch(branch) => {
@@ -250,11 +248,7 @@ impl BTree {
                 self.node_capacity,
                 self.key_size as usize,
                 self.value_size as usize,
-            )
-            .map_err(|err| Error::Internal {
-                details: "".to_string(),
-                source: Some(Box::new(err)),
-            })?;
+            )?;
 
             match node {
                 Node::Branch(branch) => {
@@ -277,10 +271,7 @@ impl BTree {
             page_num,
         };
 
-        manager.fetch_page(page_tag).map_err(|err| Error::Internal {
-            details: format!("fetch page {}", page_num),
-            source: Some(Box::new(err)),
-        })
+        manager.fetch_page(page_tag).context(error::BufferSnafu)
     }
 
     fn create_page<R: Replacer>(
@@ -300,10 +291,7 @@ impl BTree {
                 page
             })
             // .inspect(|_| self.page_count += 1)
-            .map_err(|err| Error::Internal {
-                details: "create new page".to_string(),
-                source: Some(Box::new(err)),
-            })
+            .context(error::BufferSnafu)
     }
 
     // #[cfg(test)]
@@ -375,15 +363,20 @@ struct StackNode {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::buffer::LruReplacer, rand::prelude::*, std::num::NonZeroUsize};
+    use {
+        super::*, crate::buffer::LruReplacer, rand::prelude::*, std::num::NonZeroUsize,
+        tempfile::tempdir,
+    };
 
     #[test]
     fn sequential_insertion() -> Result<()> {
         let size = NonZeroUsize::new(10).unwrap();
         let replacer = LruReplacer::new(size);
 
-        let mut manager = BufferManager::new(size, replacer);
-        let file_node = FileNode { table_id: 123 };
+        let dir = tempdir().unwrap();
+
+        let mut manager = BufferManager::new(size, replacer, dir.path().to_path_buf());
+        let file_node = FileNode::new(1, 2, 3);
         let mut btree = BTree::new(&mut manager, 30, 0, 0, file_node)?;
 
         let range = 0..120;
@@ -398,6 +391,8 @@ mod tests {
             assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
         }
 
+        dir.close().unwrap();
+
         Ok(())
     }
 
@@ -406,8 +401,10 @@ mod tests {
         let size = NonZeroUsize::new(10).unwrap();
         let replacer = LruReplacer::new(size);
 
-        let mut manager = BufferManager::new(size, replacer);
-        let file_node = FileNode { table_id: 123 };
+        let dir = tempdir().unwrap();
+
+        let mut manager = BufferManager::new(size, replacer, dir.path().to_path_buf());
+        let file_node = FileNode::new(1, 2, 3);
         let mut btree = BTree::new(&mut manager, 30, 0, 0, file_node)?;
 
         let mut rng = rand::thread_rng();
@@ -423,6 +420,8 @@ mod tests {
 
             assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
         }
+
+        dir.close().unwrap();
 
         Ok(())
     }

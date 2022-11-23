@@ -6,11 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytemuck = "1.10"
-lru = "0.8"
-
 common = { path = "../common" }
 def = { path = "../def" }
+
+bytemuck = "1.10"
+lru = "0.8"
+snafu = { version = "0.7", features = ["backtraces-impl-std"]}
 
 [dev-dependencies]
 rand = "0.8"

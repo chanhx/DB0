@@ -1,30 +1,19 @@
 use {
     bytemuck::{cast_slice, cast_slice_mut, from_bytes_mut},
-    std::{mem::size_of, ops::Range},
+    snafu::prelude::*,
+    std::{backtrace::Backtrace, mem::size_of, ops::Range},
 };
 
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug)]
+#[derive(Debug, Snafu)]
 pub enum Error {
-    IndexOutOfRange { index: usize },
+    #[snafu(display("index {} out of range", index))]
+    IndexOutOfRange { backtrace: Backtrace, index: usize },
+
+    #[snafu(display("space is not enough for insertion"))]
     SpaceNotEnough,
 }
 
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::IndexOutOfRange { index } => format!("index {} out of range", index),
-                Self::SpaceNotEnough => format!("space is not enough for insertion"),
-            }
-        )
-    }
-}
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 /// | flag:2 | offset:15 | length: 15 |
 #[derive(Debug, Copy, Clone)]
@@ -196,7 +185,9 @@ impl<'a> SlottedPage<'a> {
     pub fn get(&self, index: usize) -> Result<&[u8]> {
         let slots = self.slots();
 
-        let slot = slots.get(index).ok_or(Error::IndexOutOfRange { index })?;
+        let slot = slots
+            .get(index)
+            .ok_or(IndexOutOfRangeSnafu { index }.build())?;
 
         Ok(&self.body[slot.range()])
     }
@@ -204,7 +195,9 @@ impl<'a> SlottedPage<'a> {
     pub fn delete(&mut self, index: usize) -> Result<()> {
         let slots = self.slots_mut();
 
-        let slot = slots.get(index).ok_or(Error::IndexOutOfRange { index })?;
+        let slot = slots
+            .get(index)
+            .ok_or(IndexOutOfRangeSnafu { index }.build())?;
         let offset = slot.offset() as u16;
         let len = slot.len() as u16;
 

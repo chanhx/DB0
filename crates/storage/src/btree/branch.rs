@@ -1,7 +1,8 @@
 use {
-    super::{node::InsertEffect, Error, PageType, Result},
+    super::{error, node::InsertEffect, PageType, Result},
     crate::{buffer::Page, slotted_page::SlottedPage, PageNum},
     bytemuck::from_bytes_mut,
+    snafu::ResultExt,
     std::{cell::RefCell, mem::size_of, rc::Rc},
 };
 
@@ -121,7 +122,7 @@ impl<'a> Branch<'a> {
                     i
                 }
                 Ok(_) => {
-                    return Err(Error::KeyAlreadyExists);
+                    return Err(error::DuplicateKeySnafu.build());
                 }
                 Err(i) if i == slots.len() => i - 1,
                 Err(i) => i,
@@ -145,10 +146,7 @@ impl<'a> Branch<'a> {
 
         self.slotted_page
             .insert(index, &data)
-            .map_err(|err| Error::Internal {
-                details: "".to_string(),
-                source: Some(Box::new(err)),
-            })?;
+            .context(error::SlottedPageSnafu)?;
 
         let page_num = &page_num.to_le_bytes();
         let next_page_num_offset = slot.offset() + slot.len() - PAGE_NUM_SIZE;

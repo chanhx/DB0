@@ -7,17 +7,27 @@ mod replacer;
 
 pub(crate) use self::{
     error::{Error, Result},
-    lru_replacer::LruReplacer,
-    manager::BufferManager,
     page::Page,
     replacer::Replacer,
 };
 
-use {super::PageNum, common::pub_fields_struct, def::catalog::TableId, std::path::PathBuf};
+pub use self::{lru_replacer::LruReplacer, manager::BufferManager};
+
+use {
+    super::PageNum,
+    common::pub_fields_struct,
+    def::{
+        catalog::{CatalogId, TableId},
+        tablespace::{self, TableSpaceId},
+    },
+    std::path::PathBuf,
+};
 
 pub_fields_struct! {
     #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
     struct FileNode {
+        space_id: TableSpaceId,
+        catalog_id: CatalogId,
         table_id: TableId,
     }
 
@@ -29,8 +39,29 @@ pub_fields_struct! {
 }
 
 impl FileNode {
-    fn file_path(&self) -> PathBuf {
-        PathBuf::from(format!("./{}", self.table_id))
+    pub fn new(space_id: TableSpaceId, catalog_id: CatalogId, table_id: TableId) -> Self {
+        Self {
+            space_id,
+            catalog_id,
+            table_id,
+        }
+    }
+
+    pub fn global_meta(table_id: TableId) -> Self {
+        Self {
+            space_id: tablespace::GLOBAL_TABLESPACE_ID,
+            catalog_id: 0,
+            table_id,
+        }
+    }
+
+    pub fn file_path(&self) -> PathBuf {
+        match self.space_id {
+            tablespace::GLOBAL_TABLESPACE_ID => PathBuf::from("global"),
+            tablespace::DEFAULT_TABLESPACE_ID => PathBuf::from(format!("base/{}", self.table_id)),
+            _ => PathBuf::from(format!("tablespace/{}", self.space_id)),
+        }
+        .join(self.table_id.to_string())
     }
 }
 

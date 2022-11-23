@@ -2,6 +2,7 @@ pub mod catalog;
 mod data;
 mod join;
 pub mod storage;
+pub mod tablespace;
 pub mod transaction;
 
 pub use {

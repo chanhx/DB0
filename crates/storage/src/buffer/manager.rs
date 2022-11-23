@@ -1,13 +1,15 @@
 use {
     super::{
-        BufferId, Error, PageTag, Replacer, Result,
+        error, BufferId, PageTag, Replacer, Result,
         {page::Page, pool::BufferPool},
     },
-    crate::{file::FileManager, PageNum, PAGE_SIZE},
+    crate::{file::FileManager, PAGE_SIZE},
     core::cell::RefCell,
+    snafu::ResultExt,
     std::{
         collections::{HashMap, LinkedList},
         num::NonZeroUsize,
+        path::PathBuf,
         rc::Rc,
     },
 };
@@ -24,10 +26,11 @@ pub struct BufferManager<R: Replacer> {
     descriptors: Vec<BufferDescriptor>,
     free_frames: LinkedList<BufferId>,
     replacer: R,
+    data_dir: PathBuf,
 }
 
 impl<R: Replacer> BufferManager<R> {
-    pub fn new(size: NonZeroUsize, replacer: R) -> Self {
+    pub fn new(size: NonZeroUsize, replacer: R, data_dir: PathBuf) -> Self {
         let mut free_frames = LinkedList::new();
         (0..usize::from(size)).for_each(|i| free_frames.push_back(i as BufferId));
 
@@ -43,6 +46,7 @@ impl<R: Replacer> BufferManager<R> {
             descriptors,
             free_frames,
             replacer,
+            data_dir,
         }
     }
 
@@ -63,7 +67,7 @@ impl<R: Replacer> BufferManager<R> {
 
             buffer_id
         } else {
-            return Err(Error::BufferPoolIsFull);
+            return Err(error::NoMoreBufferSnafu.build());
         };
 
         let page = self.pool.get_buffer(buffer_id);
@@ -97,21 +101,20 @@ impl<R: Replacer> BufferManager<R> {
                 page_tag.page_num as u64 * PAGE_SIZE as u64,
                 page.borrow_mut().data_mut(),
             )
-            .map_err(|err| Error::Internal {
-                details: "read page".to_string(),
-                source: Some(Box::new(err)),
-            })?;
+            .context(error::IoSnafu)?;
 
         self.page_table.insert(page_tag, buffer_id);
 
         Ok(page)
     }
 
-    pub(crate) fn flush_page(&mut self, page_tag: &PageTag) -> Result<()> {
-        let &buffer_id = self.page_table.get(&page_tag).ok_or(Error::Internal {
-            details: "page is not in buffer".to_string(),
-            source: None,
-        })?;
+    fn flush_page(&mut self, page_tag: &PageTag) -> Result<()> {
+        let &buffer_id = self.page_table.get(&page_tag).ok_or(
+            error::PageNotInBufferSnafu {
+                page_tag: page_tag.clone(),
+            }
+            .build(),
+        )?;
 
         let page = self.pool.get_buffer(buffer_id);
         let page = page.borrow();
@@ -120,18 +123,25 @@ impl<R: Replacer> BufferManager<R> {
             return Ok(());
         }
 
+        let path = self.data_dir.join(page_tag.file_node.file_path());
+
         self.file_manager
             .write(
-                &page_tag.file_node.file_path(),
+                &path,
                 page_tag.page_num as u64 * PAGE_SIZE as u64,
                 page.data(),
             )
-            .map_err(|err| Error::Internal {
-                details: "write page".to_string(),
-                source: Some(Box::new(err)),
-            })?;
+            .context(error::IoSnafu)?;
 
         Ok(())
+    }
+
+    pub fn flush_pages(&mut self) -> Result<()> {
+        let tags = self.page_table.keys().cloned().collect::<Vec<_>>();
+
+        tags.iter()
+            .map(|page_tag| self.flush_page(page_tag))
+            .collect()
     }
 }
 

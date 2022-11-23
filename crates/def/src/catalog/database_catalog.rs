@@ -1,5 +1,5 @@
 use {
-    super::{error::Result, DatabaseId, Table, TableId},
+    super::{error::Result, CatalogId, Table, TableId},
     crate::DataType,
     common::pub_fields_struct,
 };
@@ -7,7 +7,7 @@ use {
 pub trait DatabaseCatalog {
     type T: Table;
 
-    fn id(&self) -> DatabaseId;
+    fn id(&self) -> CatalogId;
     fn create_table(&mut self, args: CreateTableArgs) -> Result<TableId>;
     fn delete_table(&mut self, id: TableId) -> Result<()>;
     fn get_table(&self, name: &str) -> Result<&Self::T>;
