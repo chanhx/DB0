@@ -1,11 +1,11 @@
+pub mod attribute;
 pub mod catalog;
-mod data;
 mod join;
 pub mod storage;
 pub mod tablespace;
 pub mod transaction;
 
 pub use {
-    data::{DataType, Row, Value},
+    attribute::{DataType, Row, Value},
     join::JoinType,
 };

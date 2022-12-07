@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
+
+byteorder = "1.4"
+snafu = { version = "0.7", features = ["backtraces-impl-std"] }

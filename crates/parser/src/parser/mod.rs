@@ -90,7 +90,7 @@ mod tests {
                     columns: vec![
                         Column {
                             name: identifier_from_str("a"),
-                            data_type: DataType::Integer,
+                            data_type: DataType::Int,
                             constraints: vec![],
                         },
                         Column {
@@ -100,7 +100,7 @@ mod tests {
                         },
                         Column {
                             name: identifier_from_str("c"),
-                            data_type: DataType::Integer,
+                            data_type: DataType::Int,
                             constraints: vec![Spanned(ColumnConstraint::Unique, 216..=221)],
                         },
                     ],

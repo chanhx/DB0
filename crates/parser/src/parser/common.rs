@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
             Spanned(Token::Keyword(Keyword::BOOLEAN), _) => Ok(DataType::Boolean),
             Spanned(Token::Keyword(Keyword::SMALLINT), _) => Ok(DataType::SmallInt),
             Spanned(Token::Keyword(Keyword::INTEGER), _)
-            | Spanned(Token::Keyword(Keyword::INT), _) => Ok(DataType::Integer),
+            | Spanned(Token::Keyword(Keyword::INT), _) => Ok(DataType::Int),
             Spanned(Token::Keyword(Keyword::DECIMAL), _)
             | Spanned(Token::Keyword(Keyword::NUMERIC), _) => Ok(DataType::Decimal),
             Spanned(Token::Keyword(Keyword::FLOAT), _) => Ok(DataType::Float),
