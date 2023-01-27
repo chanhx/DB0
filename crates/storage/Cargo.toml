@@ -9,8 +9,9 @@ edition = "2021"
 common = { path = "../common" }
 def = { path = "../def" }
 
-bytemuck = "1.10"
-lru = "0.8"
+bytemuck = "1.12"
+byteorder = "1.4"
+lru = "0.9"
 snafu = { version = "0.7", features = ["backtraces-impl-std"]}
 
 [dev-dependencies]

@@ -1,10 +1,8 @@
-use std::mem::size_of;
-
 use {
-    super::PageType,
-    crate::{PageNum, PAGE_SIZE},
+    super::{PageNum, PageType},
     bytemuck::from_bytes_mut,
     common::pub_fields_struct,
+    core::mem::size_of,
 };
 
 pub_fields_struct! {
@@ -12,15 +10,12 @@ pub_fields_struct! {
     #[repr(C)]
     struct Meta {
         page_type: PageType,
-        page_size: u16,
-        key_size: u16,
-        value_size: u32,
+        // page_size: u8,
         node_capacity: u32,
         magic: u32,
         version: u32,
         root: PageNum,
         free_list: PageNum,
-        page_count: u32,
     }
 }
 unsafe impl bytemuck::Zeroable for Meta {}
@@ -31,11 +26,14 @@ impl Meta {
         from_bytes_mut(&mut bytes[..size_of::<Meta>()])
     }
 
-    pub fn init(&mut self, key_size: u16, value_size: u32, node_capacity: u32) {
+    pub fn init(&mut self, node_capacity: u32) {
         self.page_type = PageType::Meta;
-        self.page_size = PAGE_SIZE as u16;
-        self.key_size = key_size;
-        self.value_size = value_size;
         self.node_capacity = node_capacity;
     }
 }
+
+// impl From<&mut [u8]> for &mut Self {
+//     fn from(bytes: &mut [u8]) -> Self {
+//         from_bytes_mut(&mut bytes[..size_of::<Meta>()])
+//     }
+// }

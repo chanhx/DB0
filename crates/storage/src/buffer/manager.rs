@@ -1,147 +1,283 @@
 use {
-    super::{
-        error, BufferId, PageTag, Replacer, Result,
-        {page::Page, pool::BufferPool},
-    },
-    crate::{file::FileManager, PAGE_SIZE},
-    core::cell::RefCell,
+    super::{error, FileNode, PageTag, Replacer, Result},
+    crate::{btree::PageNum, manager::StorageManager, DEFAULT_PAGE_SIZE},
+    core::ptr::NonNull,
     snafu::ResultExt,
     std::{
-        collections::{HashMap, LinkedList},
-        num::NonZeroUsize,
+        cell::RefCell,
+        collections::HashMap,
+        marker::PhantomData,
         path::PathBuf,
-        rc::Rc,
+        slice,
+        sync::{
+            atomic::{AtomicI32, AtomicU32, Ordering},
+            Arc, RwLock,
+        },
     },
 };
 
-struct BufferDescriptor {
-    page_tag: PageTag,
-    buffer_id: BufferId,
+pub(super) type BufferId = usize;
+
+pub struct BufferManager {
+    storage_manager: StorageManager,
+
+    tag_table: RefCell<HashMap<PageTag, usize>>,
+    descriptors: Vec<Arc<RefCell<BufferDescriptor>>>,
+    /// index of first free descriptor, -1 if there is no free descriptor
+    first_free: AtomicI32,
+
+    buffers: Vec<u8>,
+    buffer_size: usize,
+
+    replacer: RefCell<Replacer>,
+    // last_page_ids: HashMap<FileNode, PageId>,
 }
 
-pub struct BufferManager<R: Replacer> {
-    file_manager: FileManager,
-    pool: BufferPool,
-    page_table: HashMap<PageTag, BufferId>,
-    descriptors: Vec<BufferDescriptor>,
-    free_frames: LinkedList<BufferId>,
-    replacer: R,
-    data_dir: PathBuf,
-}
+impl BufferManager {
+    pub fn new(capacity: usize, buffer_size: usize, data_dir: PathBuf) -> Self {
+        let descriptors = (0..capacity)
+            .into_iter()
+            .map(|i| {
+                let mut free_next = i as i32 + 1;
+                if free_next == capacity as i32 {
+                    free_next = -1;
+                }
 
-impl<R: Replacer> BufferManager<R> {
-    pub fn new(size: NonZeroUsize, replacer: R, data_dir: PathBuf) -> Self {
-        let mut free_frames = LinkedList::new();
-        (0..usize::from(size)).for_each(|i| free_frames.push_back(i as BufferId));
+                Arc::new(RefCell::new(BufferDescriptor {
+                    page_tag: None,
+                    buffer_id: i,
+                    next_free: free_next,
+                    state: AtomicU32::new(0),
+                    content_lock: RwLock::new(()),
+                }))
+            })
+            .collect();
 
-        let mut descriptors = Vec::with_capacity(size.get());
-        unsafe {
-            descriptors.set_len(size.get());
-        }
+        let replacer = Replacer::new(capacity);
 
         Self {
-            file_manager: FileManager::new(),
-            pool: BufferPool::new(size),
-            page_table: HashMap::new(),
+            storage_manager: StorageManager::new(data_dir),
+
+            tag_table: RefCell::new(HashMap::with_capacity(capacity)),
             descriptors,
-            free_frames,
-            replacer,
-            data_dir,
+            first_free: AtomicI32::new(0),
+            buffers: vec![0; buffer_size * capacity],
+            buffer_size,
+
+            replacer: RefCell::new(replacer),
         }
     }
 
-    fn reuse_page(&mut self) -> Result<(BufferId, Rc<RefCell<Page>>)> {
-        let buffer_id = if let Some(buffer_id) = self.free_frames.pop_back() {
-            buffer_id
-        } else if let Some(buffer_id) = self.replacer.victim() {
-            let page = self.pool.get_buffer(buffer_id);
-            let page = page.borrow();
+    fn reuse_page(&self, tag: &PageTag) -> Result<(BufferId, BufferRef)> {
+        let first_free = self.first_free.load(Ordering::SeqCst);
+        let has_free_buffer = first_free >= 0;
 
-            let page_tag = self.descriptors[buffer_id].page_tag.clone();
+        let id = if has_free_buffer {
+            let id = first_free as usize;
+            let desc = self.descriptors[id].clone();
+            // TODO: cas
+            self.first_free
+                .store(desc.borrow().next_free, Ordering::SeqCst);
 
-            if page.is_dirty {
-                self.flush_page(&page_tag)?;
-            }
-
-            self.page_table.remove(&page_tag);
-
-            buffer_id
+            id
         } else {
-            return Err(error::NoMoreBufferSnafu.build());
+            let id = self
+                .replacer
+                .borrow_mut()
+                .victim()
+                .ok_or(error::NoMoreBufferSnafu.build())?;
+
+            self.flush_page(id)?;
+
+            id
         };
 
-        let page = self.pool.get_buffer(buffer_id);
-        self.replacer.pin(buffer_id);
+        let mut desc = self.descriptors.get(id).unwrap().borrow_mut();
 
-        Ok((buffer_id, page))
-    }
-
-    pub(crate) fn new_page(&mut self, page_tag: PageTag) -> Result<Rc<RefCell<Page>>> {
-        let (buffer_id, page) = self.reuse_page()?;
-        page.borrow_mut().num = page_tag.page_num;
-
-        self.page_table.insert(page_tag, buffer_id);
-
-        return Ok(page);
-    }
-
-    pub(crate) fn fetch_page(&mut self, page_tag: PageTag) -> Result<Rc<RefCell<Page>>> {
-        if let Some(&buffer_id) = self.page_table.get(&page_tag) {
-            let page = self.pool.get_buffer(buffer_id);
-            self.replacer.pin(buffer_id);
-
-            return Ok(page);
+        let mut tag_table = self.tag_table.borrow_mut();
+        if !has_free_buffer {
+            tag_table.remove(desc.page_tag.as_ref().unwrap());
         }
+        tag_table.insert(tag.clone(), id);
 
-        let (buffer_id, page) = self.reuse_page()?;
+        desc.register(tag.clone());
+        self.replacer.borrow_mut().pin(id);
 
-        self.file_manager
-            .read(
-                &page_tag.file_node.file_path(),
-                page_tag.page_num as u64 * PAGE_SIZE as u64,
-                page.borrow_mut().data_mut(),
+        let buffer_ref = self.get_buffer(id);
+        buffer_ref.reset();
+
+        Ok((id, buffer_ref))
+    }
+
+    pub fn new_page(&self, file_node: &FileNode /* page_size: u8 */) -> Result<BufferRef> {
+        let page_size = DEFAULT_PAGE_SIZE;
+
+        let path = file_node.file_path();
+        let page_num = self
+            .storage_manager
+            .page_count(&path, page_size)
+            .context(error::IoSnafu)? as u32;
+
+        self.storage_manager
+            .write(
+                &path,
+                page_num as u64 * page_size as u64,
+                &vec![0; page_size],
             )
             .context(error::IoSnafu)?;
 
-        self.page_table.insert(page_tag, buffer_id);
+        let tag = PageTag {
+            file_node: file_node.clone(),
+            page_num,
+        };
+
+        let (id, page) = self.reuse_page(&tag)?;
+        self.tag_table.borrow_mut().insert(tag, id);
 
         Ok(page)
     }
 
-    fn flush_page(&mut self, page_tag: &PageTag) -> Result<()> {
-        let &buffer_id = self.page_table.get(&page_tag).ok_or(
-            error::PageNotInBufferSnafu {
-                page_tag: page_tag.clone(),
-            }
-            .build(),
-        )?;
+    pub fn fetch_page(&self, tag: PageTag) -> Result<BufferRef> {
+        if let Some(id) = self.get_buffer_id(&tag) {
+            let page = self.get_buffer(id);
+            self.replacer.borrow_mut().pin(id);
 
-        let page = self.pool.get_buffer(buffer_id);
-        let page = page.borrow();
-
-        if !page.is_dirty {
-            return Ok(());
+            return Ok(page);
         }
 
-        let path = self.data_dir.join(page_tag.file_node.file_path());
+        let (id, mut page) = self.reuse_page(&tag)?;
 
-        self.file_manager
-            .write(
-                &path,
-                page_tag.page_num as u64 * PAGE_SIZE as u64,
-                page.data(),
+        self.storage_manager
+            .read(
+                &tag.file_node.file_path(),
+                tag.page_num as u64 * DEFAULT_PAGE_SIZE as u64,
+                page.as_slice_mut(),
             )
             .context(error::IoSnafu)?;
 
-        Ok(())
+        self.tag_table.borrow_mut().insert(tag, id);
+
+        Ok(page)
     }
 
-    pub fn flush_pages(&mut self) -> Result<()> {
-        let tags = self.page_table.keys().cloned().collect::<Vec<_>>();
+    fn flush_page(&self, id: BufferId) -> Result<()> {
+        let desc = self.descriptors.get(id).unwrap().borrow();
+        if !desc.is_dirty() {
+            return Ok(());
+        }
 
-        tags.iter()
-            .map(|page_tag| self.flush_page(page_tag))
-            .collect()
+        let page_tag = desc.page_tag.as_ref().unwrap();
+
+        let data = self.buffer_slice(id);
+
+        self.storage_manager
+            .write(
+                &page_tag.file_node.file_path(),
+                page_tag.page_num as u64 * DEFAULT_PAGE_SIZE as u64,
+                data,
+            )
+            .context(error::IoSnafu)
+
+        // TODO: unset dirty flag
+    }
+
+    pub fn flush_pages(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    pub(super) fn get_buffer_id(&self, page_tag: &PageTag) -> Option<BufferId> {
+        self.tag_table.borrow().get(page_tag).map(ToOwned::to_owned)
+    }
+
+    pub(super) fn get_buffer(&self, id: BufferId) -> BufferRef {
+        let desc = self.descriptors.get(id).unwrap();
+
+        BufferRef::new(
+            desc.clone(),
+            unsafe {
+                NonNull::new_unchecked(self.buffers.as_ptr().add(id * self.buffer_size).cast_mut())
+            },
+            self.buffer_size,
+        )
+    }
+
+    fn buffer_slice(&self, id: BufferId) -> &[u8] {
+        &self.buffers[id * self.buffer_size..(id + 1) * self.buffer_size]
+    }
+}
+
+#[derive(Debug)]
+struct BufferDescriptor {
+    page_tag: Option<PageTag>,
+    buffer_id: BufferId,
+    next_free: i32,
+    state: AtomicU32,
+    content_lock: RwLock<()>,
+}
+
+impl BufferDescriptor {
+    fn register(&mut self, tag: PageTag) {
+        self.page_tag = Some(tag)
+    }
+
+    fn is_dirty(&self) -> bool {
+        let state = self.state.load(Ordering::SeqCst);
+        state == 1
+    }
+
+    fn set_dirty(&mut self, dirty: bool) {
+        let state = if dirty { 1 } else { 0 };
+        self.state.swap(state, Ordering::SeqCst);
+    }
+
+    fn pin(&self, write: bool) {}
+}
+
+#[derive(Debug)]
+pub struct BufferRef<'a> {
+    // id: BufferId,
+    desc: Arc<RefCell<BufferDescriptor>>,
+    ptr: NonNull<u8>,
+    page_size: usize,
+    _phantom: PhantomData<&'a ()>,
+}
+
+impl BufferRef<'_> {
+    fn new(desc: Arc<RefCell<BufferDescriptor>>, ptr: NonNull<u8>, page_size: usize) -> Self {
+        // TODO: pin
+
+        Self {
+            desc,
+            ptr,
+            page_size,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn page_num(&self) -> PageNum {
+        self.desc.borrow().page_tag.as_ref().unwrap().page_num
+    }
+
+    pub fn set_dirty(&self) {
+        self.desc.borrow_mut().set_dirty(true);
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.page_size) }
+    }
+
+    pub fn as_slice_mut(&mut self) -> &mut [u8] {
+        unsafe { slice::from_raw_parts_mut(self.ptr.as_ptr(), self.page_size) }
+    }
+
+    fn reset(&self) {
+        unsafe { self.ptr.as_ptr().write_bytes(0, self.page_size) }
+    }
+}
+
+impl Drop for BufferRef<'_> {
+    fn drop(&mut self) {
+        // TODO: unpin
     }
 }
 

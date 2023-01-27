@@ -1,20 +1,16 @@
 mod error;
-mod lru_replacer;
 mod manager;
-mod page;
-mod pool;
 mod replacer;
 
-pub(crate) use self::{
+pub use self::{
     error::{Error, Result},
-    page::Page,
-    replacer::Replacer,
+    manager::{BufferManager, BufferRef},
 };
 
-pub use self::{lru_replacer::LruReplacer, manager::BufferManager};
+pub(self) use self::replacer::Replacer;
 
 use {
-    super::PageNum,
+    crate::btree::PageNum,
     common::pub_fields_struct,
     def::{
         catalog::{CatalogId, TableId},

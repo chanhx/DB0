@@ -127,9 +127,21 @@ impl<'a> Parser<'a> {
             Spanned(Token::Keyword(Keyword::SMALLINT), _) => Ok(DataType::SmallInt),
             Spanned(Token::Keyword(Keyword::INTEGER), _)
             | Spanned(Token::Keyword(Keyword::INT), _) => Ok(DataType::Int),
-            Spanned(Token::Keyword(Keyword::DECIMAL), _)
-            | Spanned(Token::Keyword(Keyword::NUMERIC), _) => Ok(DataType::Decimal),
-            Spanned(Token::Keyword(Keyword::FLOAT), _) => Ok(DataType::Float),
+            // Spanned(Token::Keyword(Keyword::DECIMAL), _)
+            // | Spanned(Token::Keyword(Keyword::NUMERIC), _) => Ok(DataType::Decimal),
+            Spanned(Token::Keyword(Keyword::FLOAT), _) => {
+                // TODO: parse optional number of bits parameter
+                // 1-24: float
+                // 25-53: double
+
+                // self.must_match(Token::LeftParen)?;
+                // let Spanned(_, span) = self.must_match(Token::Number { is_float: false })?;
+                // self.must_match(Token::RightParen)?;
+
+                // let bits = self.number_from_span(span)?;
+
+                Ok(DataType::Double)
+            },
             Spanned(Token::Keyword(Keyword::CHAR), _) => {
                 self.must_match(Token::LeftParen)?;
                 let Spanned(_, span) = self.must_match(Token::Number { is_float: false })?;

@@ -1,32 +1,39 @@
 use {
-    super::{error, node::InsertEffect, PageType, Result},
-    crate::{buffer::Page, slotted_page::SlottedPage, PageNum},
+    super::{error, node::InsertEffect, PageNum, PageType, Result},
+    crate::{
+        buffer::{BufferManager, FileNode},
+        slotted_page::SlottedPage,
+    },
     bytemuck::from_bytes_mut,
+    core::{mem::size_of, ops::Range},
+    def::storage::{Decoder, Encoder},
     snafu::ResultExt,
-    std::{cell::RefCell, mem::size_of, rc::Rc},
 };
-
-const PAGE_NUM_SIZE: usize = size_of::<PageNum>();
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 struct Header {
     page_type: PageType,
     dirty: bool,
-    next_sibling: PageNum,
+    right_sibling: PageNum,
 }
 unsafe impl bytemuck::Zeroable for Header {}
 unsafe impl bytemuck::Pod for Header {}
 
-pub struct Branch<'a> {
+pub struct Branch<'a, 'b, C> {
     header: &'a mut Header,
-    pub slotted_page: SlottedPage<'a>,
+    slotted_page: SlottedPage<'a>,
+
     capacity: usize,
-    key_size: u16,
+    key_codec: &'b C,
 }
 
-impl<'a> Branch<'a> {
-    pub fn new(bytes: &'a mut [u8], capacity: usize, key_size: u16) -> Self {
+impl<'a, 'b, C, K> Branch<'a, 'b, C>
+where
+    C: Encoder<Item = K> + Decoder<Item = K>,
+    K: Ord,
+{
+    pub fn new(bytes: &'a mut [u8], capacity: usize, key_codec: &'b C) -> Self {
         let (header, bytes) = bytes.split_at_mut(size_of::<Header>());
 
         let header = from_bytes_mut::<Header>(header);
@@ -36,14 +43,14 @@ impl<'a> Branch<'a> {
             header,
             slotted_page: SlottedPage::new(bytes),
             capacity,
-            key_size,
+            key_codec,
         }
     }
 
     pub fn init(
         &mut self,
-        key: &[u8],
-        high_key: &[u8],
+        raw_key: &[u8],
+        raw_high_key: &[u8],
         left: PageNum,
         right: PageNum,
         sibling: PageNum,
@@ -51,194 +58,167 @@ impl<'a> Branch<'a> {
         self.header.page_type = PageType::Branch;
         self.slotted_page.init();
 
-        let (left, right) = match self.key_size {
-            0 => (
-                [
-                    (key.len() as u16).to_le_bytes().as_slice(),
-                    key,
-                    &left.to_le_bytes(),
-                ]
-                .concat(),
-                [
-                    (high_key.len() as u16).to_le_bytes().as_slice(),
-                    high_key,
-                    &right.to_le_bytes(),
-                ]
-                .concat(),
-            ),
-            _ => (
-                [key, &left.to_le_bytes()].concat(),
-                [high_key, &right.to_le_bytes()].concat(),
-            ),
-        };
+        let (left, right) = (
+            [raw_key, &left.to_le_bytes()],
+            [raw_high_key, &right.to_le_bytes()],
+        );
         self.slotted_page.insert(0, &left).unwrap();
         self.slotted_page.insert(1, &right).unwrap();
 
-        self.header.next_sibling = sibling;
+        self.header.right_sibling = sibling;
     }
 
-    pub fn get_key_value(&self, offset: usize) -> (&[u8], PageNum) {
-        let (start, key_size) = match self.key_size as usize {
-            0 => {
-                let bytes = self.slotted_page.get_range(offset..offset + 2);
-                let key_size = u16::from_le_bytes(bytes.try_into().unwrap()) as usize;
+    fn raw_key(&self, range: Range<usize>) -> Vec<u8> {
+        self.slotted_page
+            .get_range(range.start..range.end - size_of::<PageNum>())
+            .to_vec()
+    }
 
-                (offset + 2, key_size)
-            }
-            key_size => (offset, key_size),
-        };
+    fn raw_high_key(&self) -> Vec<u8> {
+        let slot = self.slotted_page.slots().last().unwrap();
+        self.raw_key(slot.range())
+    }
 
-        (
-            self.slotted_page.get_range(start..start + key_size),
-            PageNum::from_le_bytes(
-                self.slotted_page
-                    .get_range(start + key_size..start + key_size + PAGE_NUM_SIZE)
-                    .try_into()
-                    .unwrap(),
-            ),
+    fn key(&self, range: Range<usize>) -> Result<K> {
+        let bytes = &self.slotted_page.get_range(range);
+        self.key_codec
+            .decode(bytes)
+            .map(|r| r.0)
+            .map_err(|e| error::Error::Decoding {
+                source: Box::new(e),
+            })
+    }
+
+    fn get_page_num(&self, range: Range<usize>) -> PageNum {
+        PageNum::from_le_bytes(
+            self.slotted_page
+                .get_range(range.end - size_of::<PageNum>()..range.end)
+                .try_into()
+                .unwrap(),
         )
     }
 
-    pub(super) fn high_key(&self) -> &[u8] {
-        let slot = self.slotted_page.slots().last().unwrap();
-        self.get_key_value(slot.offset()).0
-    }
-
-    pub fn insert<F>(
+    pub fn insert(
         &mut self,
-        key: &[u8],
+        raw_key: &[u8],
         page_num: PageNum,
-        mut create_page: F,
-    ) -> Result<Option<InsertEffect>>
-    where
-        F: FnMut() -> Result<Rc<RefCell<Page>>>,
-    {
-        let slots = self.slotted_page.slots();
+        index: usize,
+        raw_high_key: Vec<u8>,
 
-        let index =
-            match slots.binary_search_by(|&slot| self.get_key_value(slot.offset()).0.cmp(key)) {
-                Ok(i) if i == slots.len() - 1 => {
-                    // return the rightmost child, if the key equal to high key
-                    i
-                }
-                Ok(_) => {
-                    return Err(error::DuplicateKeySnafu.build());
-                }
-                Err(i) if i == slots.len() => i - 1,
-                Err(i) => i,
-            };
+        manager: &BufferManager,
+        file_node: &FileNode,
+    ) -> Result<Option<InsertEffect>> {
+        let update_high_key = index == self.slotted_page.slot_count() - 1;
+        let slot = self.slotted_page.slots()[index];
 
-        let update_high_key = index == slots.len() - 1;
+        let original_page_num = self.get_page_num(slot.range());
+        let original_page_num = original_page_num.to_le_bytes();
 
-        let slot = slots[index];
-        let (_, next_page_num) = self.get_key_value(slot.offset());
-        let next_page_num = &next_page_num.to_le_bytes();
-
-        let data = match self.key_size {
-            0 => [
-                (key.len() as u16).to_le_bytes().as_slice(),
-                key,
-                next_page_num,
-            ]
-            .concat(),
-            _ => [key, next_page_num].concat(),
-        };
+        let original_raw_key = self.raw_key(slot.range());
+        let page_num = page_num.to_le_bytes();
+        self.slotted_page
+            .update_slot(index, &[&original_raw_key, &page_num])
+            .unwrap();
 
         self.slotted_page
-            .insert(index, &data)
+            .insert(index, &[raw_key, &original_page_num])
             .context(error::SlottedPageSnafu)?;
 
-        let page_num = &page_num.to_le_bytes();
-        let next_page_num_offset = slot.offset() + slot.len() - PAGE_NUM_SIZE;
-        let next_page_num_range = next_page_num_offset..next_page_num_offset + PAGE_NUM_SIZE;
-        self.slotted_page.body[next_page_num_range].copy_from_slice(page_num);
+        if update_high_key {
+            self.update_high_key(&raw_high_key);
+        }
 
         if self.slotted_page.slot_count() <= self.capacity {
             return Ok(if update_high_key {
-                Some(InsertEffect::UpdateHighKey(key.to_vec()))
+                Some(InsertEffect::UpdateHighKey(raw_high_key))
             } else {
                 None
             });
         }
 
         // TODO: rebalance
-        let splited_page = create_page()?;
-        let mut splited_page = splited_page.borrow_mut();
-
-        let mut splited_branch = Branch::new(splited_page.data_mut(), self.capacity, self.key_size);
-        splited_branch.header.next_sibling = self.header.next_sibling;
+        let mut splited_page_ref = manager.new_page(file_node).context(error::BufferSnafu)?;
+        let splited_page_num = splited_page_ref.page_num();
+        let mut splited_branch = Branch::new(
+            splited_page_ref.as_slice_mut(),
+            self.capacity,
+            self.key_codec,
+        );
+        splited_branch.header.right_sibling = self.header.right_sibling;
         splited_branch.slotted_page.init();
 
         let slots_count = (self.slotted_page.slot_count() - 1) / 2;
         self.slotted_page
             .split_slots(slots_count, &mut splited_branch.slotted_page);
 
-        let splited_high_key = splited_branch.high_key().to_vec();
-        splited_page.is_dirty = true;
+        let raw_high_key = splited_branch.raw_high_key();
 
-        let new_key = self.high_key().to_vec();
+        splited_page_ref.set_dirty();
 
-        self.header.next_sibling = splited_page.num;
+        self.header.right_sibling = splited_page_num;
 
         Ok(Some(InsertEffect::Split {
-            new_key,
-            splited_high_key,
-            splited_page_num: splited_page.num,
+            raw_new_key: self.raw_high_key(),
+            raw_high_key,
+            splited_page_num,
         }))
     }
 
-    pub fn update_high_key(&mut self, high_key: &[u8]) {
-        let slot = self.slotted_page.slots().last().unwrap();
-        let offset = slot.offset();
-
-        let (key, page_num) = self.get_key_value(offset);
-        let page_num = &page_num.to_le_bytes();
-
-        match self.key_size {
-            0 => {
-                let data = [
-                    (high_key.len() as u16).to_le_bytes().as_slice(),
-                    high_key,
-                    page_num,
-                ]
-                .concat();
-
-                if high_key.len() <= key.len() {
-                    self.slotted_page.body[offset..offset + data.len()].copy_from_slice(&data);
-                } else {
-                    let index = self.slotted_page.slot_count() - 1;
-                    self.slotted_page.update_slot(index, &data).unwrap();
+    pub fn retrieve(&self, key: &K) -> Option<PageNum> {
+        let slots = self.slotted_page.slots();
+        Some(
+            match slots.binary_search_by_key(key, |slot| self.key(slot.range()).unwrap()) {
+                Err(i) if i == self.slotted_page.slot_count() => {
+                    let right_siblilng = self.header.right_sibling;
+                    if right_siblilng == 0 {
+                        return None;
+                    } else {
+                        right_siblilng
+                    }
                 }
-            }
-            _ => {
-                let range = slot.range();
-                self.slotted_page.body[range].copy_from_slice(&[high_key, page_num].concat())
-            }
-        }
+                Ok(i) | Err(i) => {
+                    let slot = slots[i];
+                    self.get_page_num(slot.range())
+                }
+            },
+        )
     }
 
-    pub fn delete(&mut self, key: &[u8]) -> Option<()> {
-        let slots = self.slotted_page.slots();
+    pub fn update_high_key(&mut self, high_key: &[u8]) {
+        let last_slot = self.slotted_page.slots().last().unwrap();
+        let range = last_slot.range();
 
-        let index =
-            match slots.binary_search_by(|&slot| self.get_key_value(slot.offset()).0.cmp(key)) {
-                Ok(i) => i,
-                Err(_) => return None,
-            };
+        let page_num = self
+            .slotted_page
+            .get_range(range.end - size_of::<PageNum>()..range.end)
+            .to_vec();
+        let data = [high_key, &page_num];
 
+        let index = self.slotted_page.slot_count() - 1;
+        self.slotted_page.update_slot(index, &data);
+    }
+
+    // TODO: rebalance
+    pub fn delete(&mut self, index: usize) -> Option<()> {
         self.slotted_page.delete(index).ok()
     }
 
-    pub fn find_child(&self, key: &[u8]) -> (usize, PageNum) {
-        let slots = self.slotted_page.slots();
+    pub(super) fn find_child(&self, key: &K) -> (usize, PageNum) {
+        let slots = &self.slotted_page.slots();
 
-        let index =
-            match slots.binary_search_by(|&slot| self.get_key_value(slot.offset()).0.cmp(key)) {
-                Ok(i) => i,
-                Err(i) if i == slots.len() => i - 1,
-                Err(i) => i,
-            };
+        let index = match slots[..self.slotted_page.slot_count() - 1]
+            .binary_search_by_key(key, |&slot| self.key(slot.range()).unwrap())
+        {
+            Ok(i) | Err(i) => i,
+        };
 
-        (index, self.get_key_value(slots[index].offset()).1)
+        let slot = slots[index];
+        let page_num = self.get_page_num(slot.range());
+
+        (index, page_num)
+    }
+
+    pub fn is_right_most_slot(&self, slot_num: usize) -> bool {
+        slot_num == self.slotted_page.slot_count() - 1
     }
 }
