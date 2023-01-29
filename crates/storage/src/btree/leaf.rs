@@ -172,4 +172,21 @@ where
             splited_page_num,
         }))
     }
+
+    // pub fn delete(&mut self, key: &K, manager: &BufferManager) -> Result<usize> {
+    //     unimplemented!()
+
+    //     // let index = match self.search_pos(key) {
+    //     //     Err(_) => return Ok(0),
+    //     //     Ok(i) => i,
+    //     // };
+
+    //     // let update_high_key = index == self.slotted_page.slot_count();
+
+    //     // self.slotted_page
+    //     //     .delete(index)
+    //     //     .context(error::SlottedPageSnafu)?;
+
+    //     // Ok(1)
+    // }
 }

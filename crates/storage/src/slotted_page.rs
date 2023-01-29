@@ -48,6 +48,11 @@ impl Slot {
         }
     }
 
+    fn update_offset(&mut self, offset: u16) {
+        self.0 &= 0xC0_00_7F_FF;
+        self.0 |= ((offset as u32) << 15) | 0xC0_00_7F_FF;
+    }
+
     fn set_state(&mut self, state: SlotState) {
         self.0 &= 0x3F_FF_FF_FF;
         self.0 |= ((state as u32) << 30) | 0x3F_FF_FF_FF;
@@ -68,7 +73,7 @@ pub struct Header {
     slot_count: u16,
     total_free_space: u16,
     fragment_list: u16,
-    cell_area_start: u16,
+    free_area_end: u16,
 }
 unsafe impl bytemuck::Zeroable for Header {}
 unsafe impl bytemuck::Pod for Header {}
@@ -93,7 +98,7 @@ impl<'a> SlottedPage<'a> {
             slot_count: 0,
             total_free_space: self.body.len() as u16,
             fragment_list: 0,
-            cell_area_start: self.body.len() as u16 - 1,
+            free_area_end: self.body.len() as u16 - 1,
         };
     }
 
@@ -138,12 +143,12 @@ impl<'a> SlottedPage<'a> {
             return Err(Error::SpaceNotEnough);
         }
 
-        if self.slots_size() as u16 + space_cost > self.header.cell_area_start {
+        if self.slots_size() as u16 + space_cost > self.header.free_area_end {
             // TODO: find available fragment or defragment
             return Err(Error::SpaceNotEnough);
         }
 
-        let offset = self.header.cell_area_start - len;
+        let offset = self.header.free_area_end - len;
         let slot = Slot::new(offset, len, SlotState::Normal);
 
         data.iter().fold(offset as usize, |start, d| {
@@ -155,7 +160,7 @@ impl<'a> SlottedPage<'a> {
 
         self.header.slot_count += 1;
         self.header.total_free_space -= space_cost as u16;
-        self.header.cell_area_start = offset;
+        self.header.free_area_end = offset;
 
         Ok(())
     }
@@ -173,14 +178,14 @@ impl<'a> SlottedPage<'a> {
                 return Err(Error::SpaceNotEnough);
             }
 
-            if self.slots_size() as u16 + len > self.header.cell_area_start {
+            if self.slots_size() as u16 + len > self.header.free_area_end {
                 // TODO: find available fragment or defragment
                 return Err(Error::SpaceNotEnough);
             }
 
             self.header.total_free_space -= len - origin_len;
-            self.header.cell_area_start -= len;
-            self.header.cell_area_start
+            self.header.free_area_end -= len;
+            self.header.free_area_end
         };
 
         *self.slots_mut().get_mut(index).unwrap() =
@@ -206,22 +211,30 @@ impl<'a> SlottedPage<'a> {
     }
 
     pub fn delete(&mut self, index: usize) -> Result<()> {
+        let slot_count = self.slot_count();
         let slots = self.slots_mut();
 
         let slot = slots
             .get(index)
             .ok_or(IndexOutOfRangeSnafu { index }.build())?;
-        let offset = slot.offset() as u16;
+        let offset = slot.offset();
         let len = slot.len() as u16;
 
         slots.copy_within(index + 1.., index);
+        slots.iter_mut().take(slot_count - 1).for_each(|slot| {
+            let o = slot.offset();
+            if o < offset {
+                slot.update_offset(o as u16 + len);
+            }
+        });
 
-        self.header.total_free_space -= len + size_of::<Slot>() as u16;
-        if offset == self.header.cell_area_start {
-            self.header.cell_area_start += len;
-        }
-
-        // TODO: add fragment to fragment list
+        self.body.copy_within(
+            self.header.free_area_end as usize..offset,
+            (self.header.free_area_end + len) as usize,
+        );
+        self.header.slot_count -= 1;
+        self.header.total_free_space += len + size_of::<Slot>() as u16;
+        self.header.free_area_end += len;
 
         Ok(())
     }

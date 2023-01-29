@@ -202,6 +202,10 @@ where
         }
     }
 
+    // pub fn delete(&mut self, key: &K, manager: &mut BufferManager) -> Result<usize> {
+    //     unimplemented!()
+    // }
+
     fn fetch_page<'a>(
         &'_ self,
         manager: &'a BufferManager,

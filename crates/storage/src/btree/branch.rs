@@ -198,10 +198,10 @@ where
         self.slotted_page.update_slot(index, &data);
     }
 
-    // TODO: rebalance
-    pub fn delete(&mut self, index: usize) -> Option<()> {
-        self.slotted_page.delete(index).ok()
-    }
+    // // TODO: rebalance
+    // pub fn delete(&mut self, index: usize) -> Option<()> {
+    //     self.slotted_page.delete(index).ok()
+    // }
 
     pub(super) fn find_child(&self, key: &K) -> (usize, PageNum) {
         let slots = &self.slotted_page.slots();
