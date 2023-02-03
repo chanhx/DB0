@@ -2,15 +2,13 @@ mod error;
 mod manager;
 mod replacer;
 
+pub(self) use self::replacer::Replacer;
 pub use self::{
     error::{Error, Result},
     manager::{BufferManager, BufferRef},
 };
-
-pub(self) use self::replacer::Replacer;
-
 use {
-    crate::btree::PageNum,
+    crate::PageNum,
     common::pub_fields_struct,
     def::{
         catalog::{CatalogId, TableId},

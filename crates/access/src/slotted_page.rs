@@ -1,7 +1,8 @@
 use {
     bytemuck::{cast_slice, cast_slice_mut, from_bytes_mut},
+    core::{mem::size_of, ops::Range},
     snafu::prelude::*,
-    std::{backtrace::Backtrace, mem::size_of, ops::Range},
+    std::backtrace::Backtrace,
 };
 
 #[derive(Debug, Snafu)]

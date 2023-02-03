@@ -1,6 +1,7 @@
 use {
-    crate::{buffer, slotted_page},
+    crate::slotted_page,
     snafu::{prelude::*, Backtrace},
+    storage::buffer,
 };
 
 #[derive(Debug, Snafu)]

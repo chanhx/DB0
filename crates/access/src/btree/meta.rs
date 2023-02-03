@@ -1,8 +1,6 @@
 use {
-    super::{PageNum, PageType},
-    bytemuck::from_bytes_mut,
-    common::pub_fields_struct,
-    core::mem::size_of,
+    super::PageType, bytemuck::from_bytes_mut, common::pub_fields_struct, core::mem::size_of,
+    storage::PageNum,
 };
 
 pub_fields_struct! {

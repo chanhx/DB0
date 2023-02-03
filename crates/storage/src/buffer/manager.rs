@@ -1,6 +1,6 @@
 use {
     super::{error, FileNode, PageTag, Replacer, Result},
-    crate::{btree::PageNum, manager::StorageManager, DEFAULT_PAGE_SIZE},
+    crate::{manager::StorageManager, PageNum, DEFAULT_PAGE_SIZE},
     core::ptr::NonNull,
     snafu::ResultExt,
     std::{

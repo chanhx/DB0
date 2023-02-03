@@ -3,10 +3,10 @@ use {
         branch::Branch,
         error::{self, Result},
         leaf::Leaf,
-        PageNum, PageType,
+        PageType,
     },
-    crate::buffer::BufferRef,
     def::storage::{Decoder, Encoder},
+    storage::{buffer::BufferRef, PageNum},
 };
 
 pub(super) enum Node<'a, 'b, C> {

@@ -5,6 +5,7 @@ members = ["crates/*"]
 edition = "2021"
 
 [workspace.dependencies]
+access = { path = "./crates/access" }
 common = { path = "./crates/common" }
 def = { path = "./crates/def" }
 parser = { path = "./crates/parser" }

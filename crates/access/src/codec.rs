@@ -40,7 +40,7 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) struct Codec {
+pub struct Codec {
     attributes: Vec<Attribute>,
     var_lens_byte_count: usize,
     bitmap_byte_count: usize,
@@ -48,7 +48,7 @@ pub(crate) struct Codec {
 }
 
 impl Codec {
-    pub(crate) fn new(attributes: Vec<Attribute>) -> Self {
+    pub fn new(attributes: Vec<Attribute>) -> Self {
         let (var_lens_byte_count, bitmap_byte_count) = bytes_repr_info(&attributes);
         let data_region_start = var_lens_byte_count + bitmap_byte_count;
 

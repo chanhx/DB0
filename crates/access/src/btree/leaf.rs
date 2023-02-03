@@ -1,13 +1,14 @@
 use {
-    super::{error, InsertEffect, PageNum, PageType, Result},
-    crate::{
-        buffer::{BufferManager, BufferRef, FileNode},
-        slotted_page::SlottedPage,
-    },
+    super::{error, InsertEffect, PageType, Result},
+    crate::slotted_page::SlottedPage,
     bytemuck::from_bytes_mut,
     core::{mem::size_of, ops::Range},
     def::storage::{Decoder, Encoder},
     snafu::ResultExt,
+    storage::{
+        buffer::{BufferManager, BufferRef, FileNode},
+        PageNum,
+    },
 };
 
 #[derive(Debug, Copy, Clone)]

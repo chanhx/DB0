@@ -12,12 +12,13 @@ use {
         meta::Meta,
         node::{InsertEffect, Node},
     },
-    crate::buffer::{BufferManager, BufferRef, FileNode, PageTag},
     def::storage::{Decoder, Encoder},
     snafu::ResultExt,
+    storage::{
+        buffer::{BufferManager, BufferRef, FileNode, PageTag},
+        PageNum,
+    },
 };
-
-pub(crate) type PageNum = u32;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
@@ -236,9 +237,10 @@ struct StackNode {
 mod tests {
     use {
         super::*,
-        crate::{codec::Codec, DEFAULT_PAGE_SIZE},
+        crate::codec::Codec,
         def::{attribute::Attribute, Value},
         rand::prelude::*,
+        storage::DEFAULT_PAGE_SIZE,
         tempfile::tempdir,
     };
 

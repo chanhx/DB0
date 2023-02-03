@@ -1,17 +1,19 @@
 [package]
-name = "storage"
+name = "access"
 version = "0.0.0"
-
-edition.workspace = true
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lru = "0.9"
-snafu = { version = "0.7", features = ["backtraces-impl-std"]}
+bytemuck = "1.12"
+byteorder = "1.4"
+snafu = { version = "0.7", features = ["backtraces-impl-std"] }
 
 common.workspace = true
 def.workspace = true
+storage.workspace = true
 
 [dev-dependencies]
+rand = "0.8"
 tempfile = "3"
