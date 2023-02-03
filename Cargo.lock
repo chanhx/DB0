@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "db0"
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "def"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "common",
  "snafu",
@@ -180,7 +180,7 @@ checksum = "7b5bf27447411e9ee3ff51186bf7a08e16c341efdde93f4d823e8844429bed7e"
 
 [[package]]
 name = "parser"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "common",
  "def",
@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "planner"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "common",
  "def",
@@ -291,7 +291,7 @@ dependencies = [
 
 [[package]]
 name = "storage"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "bytemuck",
  "byteorder",

@@ -1,2 +1,12 @@
 [workspace]
 members = ["crates/*"]
+
+[workspace.package]
+edition = "2021"
+
+[workspace.dependencies]
+common = { path = "./crates/common" }
+def = { path = "./crates/def" }
+parser = { path = "./crates/parser" }
+planner = { path = "./crates/planner" }
+storage = { path = "./crates/storage" }

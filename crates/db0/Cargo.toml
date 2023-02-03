@@ -1,13 +1,14 @@
 [package]
 name = "db0"
 version = "0.1.0"
-edition = "2021"
+
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-def = { path = "../def" }
-storage = { path = "../storage" }
-
 clap = "4.0"
 snafu = { version = "0.7", features = ["backtraces-impl-std"]}
+
+def.workspace = true
+storage.workspace = true

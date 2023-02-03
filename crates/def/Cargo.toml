@@ -1,11 +1,12 @@
 [package]
 name = "def"
-version = "0.1.0"
-edition = "2021"
+version = "0.0.0"
+
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-common = { path = "../common" }
-
 snafu = { version = "0.7", features = ["backtraces-impl-std"] }
+
+common.workspace = true
