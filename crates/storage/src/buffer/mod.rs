@@ -11,8 +11,8 @@ use {
     crate::PageNum,
     common::pub_fields_struct,
     def::{
-        catalog::{CatalogId, TableId},
-        tablespace::{self, TableSpaceId},
+        meta::{TABLESPACE_ID_DEFAULT, TABLESPACE_ID_GLOBAL},
+        DatabaseId, TableId, TableSpaceId,
     },
     std::path::PathBuf,
 };
@@ -21,7 +21,7 @@ pub_fields_struct! {
     #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
     struct FileNode {
         space_id: TableSpaceId,
-        catalog_id: CatalogId,
+        database_id: DatabaseId,
         table_id: TableId,
     }
 
@@ -33,26 +33,26 @@ pub_fields_struct! {
 }
 
 impl FileNode {
-    pub fn new(space_id: TableSpaceId, catalog_id: CatalogId, table_id: TableId) -> Self {
+    pub fn new(space_id: TableSpaceId, database_id: DatabaseId, table_id: TableId) -> Self {
         Self {
             space_id,
-            catalog_id,
+            database_id,
             table_id,
         }
     }
 
     pub fn global_meta(table_id: TableId) -> Self {
         Self {
-            space_id: tablespace::GLOBAL_TABLESPACE_ID,
-            catalog_id: 0,
+            space_id: TABLESPACE_ID_GLOBAL,
+            database_id: 0,
             table_id,
         }
     }
 
     pub fn file_path(&self) -> PathBuf {
         match self.space_id {
-            tablespace::GLOBAL_TABLESPACE_ID => PathBuf::from("global"),
-            tablespace::DEFAULT_TABLESPACE_ID => PathBuf::from(format!("base/{}", self.table_id)),
+            TABLESPACE_ID_GLOBAL => PathBuf::from("global"),
+            TABLESPACE_ID_DEFAULT => PathBuf::from(format!("base/{}", self.table_id)),
             _ => PathBuf::from(format!("tablespace/{}", self.space_id)),
         }
         .join(self.table_id.to_string())

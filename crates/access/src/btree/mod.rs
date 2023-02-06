@@ -1,10 +1,9 @@
 mod branch;
-mod error;
+pub mod error;
 mod leaf;
 mod meta;
 mod node;
 
-pub use error::{Error, Result};
 use {
     self::{
         branch::Branch,
@@ -12,7 +11,11 @@ use {
         meta::Meta,
         node::{InsertEffect, Node},
     },
-    def::storage::{Decoder, Encoder},
+    def::{
+        storage::{Decoder, Encoder},
+        SqlType,
+    },
+    error::{Error, Result},
     snafu::ResultExt,
     storage::{
         buffer::{BufferManager, BufferRef, FileNode, PageTag},
@@ -238,7 +241,7 @@ mod tests {
     use {
         super::*,
         crate::codec::Codec,
-        def::{attribute::Attribute, Value},
+        def::{meta::Column, SqlType, Value},
         rand::prelude::*,
         storage::DEFAULT_PAGE_SIZE,
         tempfile::tempdir,
@@ -248,7 +251,7 @@ mod tests {
     fn sequential_insertion() -> Result<()> {
         let dir = tempdir().unwrap();
 
-        let attr = Attribute::new("abc".to_string(), 0, def::DataType::TinyUint, false);
+        let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
         let codec = Codec::new(vec![attr]);
 
         let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
@@ -279,7 +282,7 @@ mod tests {
     fn random_insertion() -> Result<()> {
         let dir = tempdir().unwrap();
 
-        let attr = Attribute::new("abc".to_string(), 0, def::DataType::TinyUint, false);
+        let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
         let codec = Codec::new(vec![attr]);
 
         let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());

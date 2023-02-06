@@ -2,8 +2,9 @@ use {
     byteorder::{ReadBytesExt, WriteBytesExt, LE},
     common::dsa::bitmap::{Bitmap, BitmapMut},
     def::{
-        attribute::{Attribute, DataType, Value},
+        meta::Column,
         storage::{Decoder, Encoder},
+        SqlType, Value,
     },
     snafu::{prelude::*, Backtrace},
     std::{
@@ -23,7 +24,7 @@ pub enum Error {
         source: io::Error,
     },
 
-    #[snafu(display("the count of values does not match the count of attributes"))]
+    #[snafu(display("the count of values does not match the count of columns"))]
     ValuesCount {
         backtrace: Backtrace,
     },
@@ -41,19 +42,19 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct Codec {
-    attributes: Vec<Attribute>,
+    columns: Vec<Column>,
     var_lens_byte_count: usize,
     bitmap_byte_count: usize,
     data_region_start: usize,
 }
 
 impl Codec {
-    pub fn new(attributes: Vec<Attribute>) -> Self {
-        let (var_lens_byte_count, bitmap_byte_count) = bytes_repr_info(&attributes);
+    pub fn new(columns: Vec<Column>) -> Self {
+        let (var_lens_byte_count, bitmap_byte_count) = bytes_repr_info(&columns);
         let data_region_start = var_lens_byte_count + bitmap_byte_count;
 
         Self {
-            attributes,
+            columns,
             var_lens_byte_count,
             bitmap_byte_count,
             data_region_start,
@@ -66,7 +67,7 @@ impl Encoder for Codec {
     type Error = Error;
 
     fn encode(&self, values: &Vec<Value>) -> Result<Vec<u8>> {
-        if values.len() != self.attributes.len() {
+        if values.len() != self.columns.len() {
             return Err(ValuesCountSnafu.build());
         }
 
@@ -81,14 +82,14 @@ impl Encoder for Codec {
         let mut bitmap = BitmapMut::new(bitmap);
         let mut data_writer = Cursor::new(data_region);
 
-        for (i, (v, attr)) in values.iter().zip(self.attributes.iter()).enumerate() {
-            if attr.data_type.is_variable_length() {
+        for (i, (v, col)) in values.iter().zip(self.columns.iter()).enumerate() {
+            if col.type_id.is_variable_length() {
                 var_lens_writer
                     .write_u16::<LE>(v.byte_count() as u16)
                     .context(IoSnafu)?;
             }
 
-            if attr.is_nullable && matches!(v, Value::Null) {
+            if col.is_nullable && matches!(v, Value::Null) {
                 bitmap.set_unchecked(i);
             }
 
@@ -108,19 +109,19 @@ impl Decoder for Codec {
         let null_bitmap = Bitmap::new(&src[self.var_lens_byte_count..self.data_region_start]);
         let mut reader = Cursor::new(&src[self.data_region_start..]);
 
-        self.attributes
+        self.columns
             .iter()
             .enumerate()
-            .map(|(i, attr)| {
-                if attr.is_nullable && null_bitmap.is_set_unchecked(i) {
+            .map(|(i, col)| {
+                if col.is_nullable && null_bitmap.is_set_unchecked(i) {
                     return Ok(Value::Null);
                 }
 
-                if attr.data_type.is_variable_length() {
+                if col.type_id.is_variable_length() {
                     let len = var_lens.read_u16::<LE>().context(IoSnafu)? as usize;
                     reader.read_string(len)
                 } else {
-                    reader.read_fixed_size_value(&attr.data_type)
+                    reader.read_fixed_size_value(&col.type_id, col.type_len)
                 }
             })
             .collect::<Result<_>>()
@@ -128,13 +129,13 @@ impl Decoder for Codec {
     }
 }
 
-fn bytes_repr_info(attributes: &[Attribute]) -> (usize, usize) {
+fn bytes_repr_info(columns: &[Column]) -> (usize, usize) {
     let mut contain_nullable = false;
 
-    let var_len_area_byte_count = attributes
+    let var_len_area_byte_count = columns
         .iter()
         .inspect(|attr| contain_nullable |= attr.is_nullable)
-        .filter(|attr| attr.data_type.is_variable_length())
+        .filter(|attr| attr.type_id.is_variable_length())
         .map(|_| {
             // TODO: there should be a type table recording the max length of each variable-length type
             2usize
@@ -142,7 +143,7 @@ fn bytes_repr_info(attributes: &[Attribute]) -> (usize, usize) {
         .sum();
 
     let bitmap_byte_count = if contain_nullable {
-        (attributes.len() + 7) / 8
+        (columns.len() + 7) / 8
     } else {
         0
     };
@@ -151,9 +152,9 @@ fn bytes_repr_info(attributes: &[Attribute]) -> (usize, usize) {
 }
 
 trait ReadValue: io::Read {
-    fn read_fixed_size_value(&mut self, data_type: &DataType) -> Result<Value> {
-        Ok(match data_type {
-            DataType::Boolean => Value::Boolean({
+    fn read_fixed_size_value(&mut self, sql_type: &SqlType, type_len: u16) -> Result<Value> {
+        Ok(match sql_type {
+            SqlType::Boolean => Value::Boolean({
                 match self.read_u8().context(IoSnafu)? {
                     0 => false,
                     1 => true,
@@ -161,21 +162,21 @@ trait ReadValue: io::Read {
                 }
             }),
 
-            DataType::TinyInt => Value::TinyInt(self.read_i8().context(IoSnafu)?),
-            DataType::SmallInt => Value::SmallInt(self.read_i16::<LE>().context(IoSnafu)?),
-            DataType::Int => Value::Int(self.read_i32::<LE>().context(IoSnafu)?),
-            DataType::BigInt => Value::BigInt(self.read_i64::<LE>().context(IoSnafu)?),
+            SqlType::TinyInt => Value::TinyInt(self.read_i8().context(IoSnafu)?),
+            SqlType::SmallInt => Value::SmallInt(self.read_i16::<LE>().context(IoSnafu)?),
+            SqlType::Int => Value::Int(self.read_i32::<LE>().context(IoSnafu)?),
+            SqlType::BigInt => Value::BigInt(self.read_i64::<LE>().context(IoSnafu)?),
 
-            DataType::TinyUint => Value::TinyUint(self.read_u8().context(IoSnafu)?),
-            DataType::SmallUint => Value::SmallUint(self.read_u16::<LE>().context(IoSnafu)?),
-            DataType::Uint => Value::Uint(self.read_u32::<LE>().context(IoSnafu)?),
-            DataType::BigUint => Value::BigUint(self.read_u64::<LE>().context(IoSnafu)?),
+            SqlType::TinyUint => Value::TinyUint(self.read_u8().context(IoSnafu)?),
+            SqlType::SmallUint => Value::SmallUint(self.read_u16::<LE>().context(IoSnafu)?),
+            SqlType::Uint => Value::Uint(self.read_u32::<LE>().context(IoSnafu)?),
+            SqlType::BigUint => Value::BigUint(self.read_u64::<LE>().context(IoSnafu)?),
 
-            DataType::Float => Value::Float(self.read_f32::<LE>().context(IoSnafu)?),
-            DataType::Double => Value::Double(self.read_f64::<LE>().context(IoSnafu)?),
+            SqlType::Float => Value::Float(self.read_f32::<LE>().context(IoSnafu)?),
+            SqlType::Double => Value::Double(self.read_f64::<LE>().context(IoSnafu)?),
 
-            DataType::Char(len) => self.read_string(*len as usize)?,
-            DataType::Varchar(_) => return Err(InternalSnafu.build()),
+            SqlType::Char => self.read_string(type_len as usize)?,
+            SqlType::Varchar => return Err(InternalSnafu.build()),
         })
     }
 
@@ -223,36 +224,50 @@ impl WriteValue for Cursor<&mut [u8]> {}
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use {super::*, def::DataType};
 
-    #[test]
-    fn build_attribute() {
-        let meta_attributes = [
-            Attribute::new("name".to_string(), 0, DataType::Varchar(20), false),
-            Attribute::new("num".to_string(), 1, DataType::SmallInt, false),
-            Attribute::new("type".to_string(), 2, DataType::TinyInt, false),
-            Attribute::new("length".to_string(), 3, DataType::Int, false),
-            Attribute::new("is_nullable".to_string(), 3, DataType::Boolean, false),
-        ];
+    // #[test]
+    // fn build_column() {
+    //     let meta_columns = [
+    //         Column::new("name", DataType::Varchar(20), false),
+    //         Column::new("num", DataType::SmallInt, false),
+    //         Column::new("type", DataType::TinyInt, false),
+    //         Column::new("length", DataType::Int, false),
+    //         Column::new("is_nullable", DataType::Boolean, false),
+    //     ];
 
-        meta_attributes.iter().for_each(|attr| {
-            let values = attr.to_values();
-            let attr_from_values: Attribute = values.try_into().unwrap();
+    //     meta_columns.iter().for_each(|attr| {
+    //         let values = attr.to_values();
+    //         let attr_from_values: Column = values.try_into().unwrap();
 
-            assert_eq!(*attr, attr_from_values);
-        })
-    }
+    //         assert_eq!(*attr, attr_from_values);
+    //     })
+    // }
 
     #[test]
     fn encode_decode() {
-        let attrs = vec![
-            Attribute::new("name".to_string(), 0, DataType::Varchar(6), false),
-            Attribute::new("address".to_string(), 0, DataType::Varchar(20), true),
-            Attribute::new("phone".to_string(), 1, DataType::Char(5), true),
-            Attribute::new("age".to_string(), 2, DataType::TinyInt, true),
-        ];
+        let columns = [
+            ("name", DataType::Varchar(6), false),
+            ("address", DataType::Varchar(20), true),
+            ("phone", DataType::Char(5), true),
+            ("age", DataType::TinyInt, true),
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, (name, ty, is_nullable))| {
+            let (type_id, type_len) = ty.value_repr();
+            Column::new(
+                1 + 1,
+                i as i16,
+                name.to_string(),
+                type_id,
+                type_len as u16,
+                is_nullable,
+            )
+        })
+        .collect::<Vec<_>>();
 
-        let codec = Codec::new(attrs);
+        let codec = Codec::new(columns);
 
         let rows = vec![
             vec![

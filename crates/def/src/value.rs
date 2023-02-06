@@ -1,8 +1,35 @@
-use core::{cmp::Ordering, mem::size_of};
+use {
+    crate::SqlType,
+    core::{cmp::Ordering, mem::size_of},
+};
 
-#[derive(Debug, PartialEq)]
-pub enum Value {
-    Null,
+macro_rules! define_value {
+    (@byte_count $ident:ident, String) => {
+        $ident.as_bytes().len()
+    };
+    (@byte_count $ident:ident, $raw:ty) => {
+        size_of::<$raw>()
+    };
+
+    ($($variant:ident($raw:ty),)*) => {
+        #[derive(Debug, Clone, PartialEq)]
+        pub enum Value {
+            Null,
+            $($variant($raw),)*
+        }
+
+        impl Value {
+            pub fn byte_count(&self) -> usize {
+                match self {
+                    Self::Null => 0,
+                    $(Self::$variant(_v) => define_value!(@byte_count _v, $raw),)*
+                }
+            }
+        }
+    };
+}
+
+define_value! {
     Boolean(bool),
     TinyInt(i8),
     SmallInt(i16),
@@ -15,26 +42,6 @@ pub enum Value {
     Float(f32),
     Double(f64),
     String(String),
-}
-
-impl Value {
-    pub fn byte_count(&self) -> usize {
-        match self {
-            Self::Null => 0,
-            Self::Boolean(_) => size_of::<bool>(),
-            Self::TinyInt(_) => size_of::<i8>(),
-            Self::SmallInt(_) => size_of::<i16>(),
-            Self::Int(_) => size_of::<i32>(),
-            Self::BigInt(_) => size_of::<i64>(),
-            Self::TinyUint(_) => size_of::<u8>(),
-            Self::SmallUint(_) => size_of::<u16>(),
-            Self::Uint(_) => size_of::<u32>(),
-            Self::BigUint(_) => size_of::<u64>(),
-            Self::Float(_) => size_of::<f32>(),
-            Self::Double(_) => size_of::<f64>(),
-            Self::String(s) => s.as_bytes().len(),
-        }
-    }
 }
 
 impl Eq for Value {}
@@ -82,4 +89,35 @@ impl Ord for Value {
     }
 }
 
-pub type Row = Vec<Value>;
+macro_rules! value_conversions {
+    ($(($raw:ty, $val:ident),)*) => {
+        $(
+            impl From<$raw> for Value {
+                fn from(raw: $raw) -> Self {
+                    Value::$val(raw)
+                }
+            }
+        )*
+    };
+}
+
+value_conversions! {
+    (bool, Boolean),
+    (i8, TinyInt),
+    (i16, SmallInt),
+    (i32, Int),
+    (i64, BigInt),
+    (u8, TinyUint),
+    (u16, SmallUint),
+    (u32, Uint),
+    (u64, BigUint),
+    (f32, Float),
+    (f64, Double),
+    (String, String),
+}
+
+impl From<SqlType> for Value {
+    fn from(raw: SqlType) -> Self {
+        Value::SmallUint(raw as u16)
+    }
+}

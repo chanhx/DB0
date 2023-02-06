@@ -5,6 +5,8 @@ members = ["crates/*"]
 edition = "2021"
 
 [workspace.dependencies]
+snafu = { version = "0.7", features = ["backtraces-impl-std"] }
+
 access = { path = "./crates/access" }
 common = { path = "./crates/common" }
 def = { path = "./crates/def" }

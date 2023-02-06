@@ -1,19 +1,13 @@
-mod codec;
+pub trait Encoder {
+    type Item;
+    type Error: std::error::Error + 'static;
 
-use crate::{catalog::TableId, Row, Value};
-pub use codec::{Decoder, Encoder};
+    fn encode(&self, item: &Self::Item) -> Result<Vec<u8>, Self::Error>;
+}
 
-pub trait Storage {
-    type Error: std::error::Error;
+pub trait Decoder {
+    type Item;
+    type Error: std::error::Error + 'static;
 
-    fn create(
-        &mut self,
-        table_id: TableId,
-        id: Option<Value>,
-        row: Row,
-    ) -> Result<Value, Self::Error>;
-
-    fn read(&self, table_id: TableId, id: Value) -> Result<Row, Self::Error>;
-    // fn update(&mut self, table_id: TableId, id: Value, )
-    fn delete(&mut self, table_id: TableId, id: Value) -> Result<(), Self::Error>;
+    fn decode(&self, src: &[u8]) -> Result<(Self::Item, usize), Self::Error>;
 }
