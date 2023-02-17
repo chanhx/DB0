@@ -3,9 +3,9 @@ use {
         error::{Error, Result},
         Parser,
     },
-    crate::{
-        common::{Identifier, Span, Spanned},
-        lexer::{Keyword, Token},
+    ast::{
+        token::{Keyword, Token},
+        Identifier, Span, Spanned,
     },
     core::str::FromStr,
     def::DataType,

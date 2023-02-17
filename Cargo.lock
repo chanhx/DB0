@@ -28,6 +28,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ast"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "def",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -198,6 +206,7 @@ checksum = "7b5bf27447411e9ee3ff51186bf7a08e16c341efdde93f4d823e8844429bed7e"
 name = "parser"
 version = "0.0.0"
 dependencies = [
+ "ast",
  "common",
  "def",
 ]
@@ -206,6 +215,7 @@ dependencies = [
 name = "planner"
 version = "0.0.0"
 dependencies = [
+ "ast",
  "common",
  "def",
  "parser",

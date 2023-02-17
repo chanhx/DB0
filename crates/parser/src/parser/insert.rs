@@ -4,10 +4,9 @@ use {
         error::{Error, Result},
         Parser,
     },
-    crate::{
-        ast::{dml::InsertSource, Statement},
-        common::Spanned,
-        lexer::{Keyword, Token},
+    ast::{
+        token::{Keyword, Token},
+        InsertSource, Spanned, Statement,
     },
 };
 
@@ -54,10 +53,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::{
-            ast::{dml::*, expr::*},
-            common::{identifier_from_str, ColumnRef},
-        },
+        ast::{expr::*, identifier_from_str, ColumnRef, FromItem, Query, SelectFrom, TargetElem},
     };
 
     #[test]

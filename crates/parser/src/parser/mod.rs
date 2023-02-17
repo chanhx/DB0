@@ -6,11 +6,15 @@ mod insert;
 mod query;
 
 pub use self::error::{Error, Result};
-
-use crate::{
-    ast::Statement,
-    common::{MultiPeek, MultiPeekable, Spanned},
-    lexer::{Keyword, Lexer, Token},
+use {
+    crate::{
+        lexer::Lexer,
+        multi_peekable::{MultiPeek, MultiPeekable},
+    },
+    ast::{
+        token::{Keyword, Token},
+        Spanned, Statement,
+    },
 };
 
 pub struct Parser<'a> {
@@ -54,7 +58,10 @@ impl<'a> Iterator for Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::{ast::ddl::*, common::identifier_from_str},
+        ast::{
+            identifier_from_str, Column, ColumnConstraint, CreateTableStmt, TableConstraint,
+            TableSchema,
+        },
         def::DataType,
     };
 

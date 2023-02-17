@@ -4,10 +4,10 @@ use {
         error::{Error, Result},
         Parser,
     },
-    crate::{
-        ast::{ddl::*, Statement},
-        common::Spanned,
-        lexer::{Keyword, Token},
+    ast::{
+        token::{Keyword, Token},
+        Column, ColumnConstraint, CreateTableAsStmt, CreateTableStmt, Spanned, Statement,
+        TableConstraint, TableSchema,
     },
 };
 

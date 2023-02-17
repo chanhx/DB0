@@ -1,4 +1,4 @@
-use crate::common::Span;
+use ast::Span;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

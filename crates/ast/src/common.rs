@@ -1,7 +1,3 @@
-mod multi_peekable;
-
-pub(crate) use multi_peekable::{MultiPeek, MultiPeekable};
-
 use {
     common::pub_fields_struct,
     std::fmt::{Display, Formatter, Result},
@@ -26,8 +22,8 @@ impl<T: Display> Display for Spanned<T> {
 
 pub type Identifier = Spanned<String>;
 
-#[cfg(test)]
-pub(crate) fn identifier_from_str(s: &str) -> Identifier {
+// #[cfg(test)]
+pub fn identifier_from_str(s: &str) -> Identifier {
     Spanned(s.to_string(), 0..=s.len() - 1)
 }
 

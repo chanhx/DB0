@@ -1,8 +1,8 @@
 use {
     crate::{Insert, Scan},
+    ast::{expr::Expression, TargetElem},
     common::pub_fields_struct,
     def::JoinType,
-    parser::ast::{dml::TargetElem, expr::Expression},
 };
 
 #[derive(Debug)]

@@ -2,16 +2,15 @@ mod error;
 mod logical_plan;
 mod physical_plan;
 
-pub use {
-    error::{Error, Result},
-    physical_plan::PhysicalNode,
-};
-
 use {
+    ast::expr::Expression,
     common::pub_fields_struct,
     def::catalog::{ColumnId, DatabaseCatalog, TableId},
     logical_plan::LogicalNode,
-    parser::ast::{expr::Expression, Statement},
+};
+pub use {
+    error::{Error, Result},
+    physical_plan::PhysicalNode,
 };
 
 pub struct Planner<'a, D: DatabaseCatalog> {

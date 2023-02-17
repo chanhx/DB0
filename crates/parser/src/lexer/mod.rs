@@ -1,13 +1,11 @@
 mod error;
-mod token;
 
-pub(crate) use self::{
-    error::{Error, Result},
-    token::{Keyword, Token},
-};
-
+pub(crate) use self::error::{Error, Result};
 use {
-    crate::common::Spanned,
+    ast::{
+        token::{Keyword, Token},
+        Spanned,
+    },
     std::{
         iter::Peekable,
         str::{CharIndices, FromStr},

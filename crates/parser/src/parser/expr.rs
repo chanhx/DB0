@@ -4,10 +4,10 @@ use {
         error::{Error, Result},
         Parser,
     },
-    crate::{
-        ast::expr::*,
-        common::{ColumnRef, Spanned},
-        lexer::{Keyword, Token},
+    ast::{
+        expr::*,
+        token::{Keyword, Token},
+        ColumnRef, Spanned,
     },
 };
 
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::{ast::expr::Operation, common::identifier_from_str},
+        ast::{expr::Operation, identifier_from_str},
     };
 
     #[test]

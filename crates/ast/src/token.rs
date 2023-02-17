@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
-pub(crate) enum Token {
+pub enum Token {
     Keyword(Keyword),
 
     Identifier,
@@ -34,12 +34,12 @@ macro_rules! keyword {
     ( $( $var:ident, )* ) => {
         #[derive(Debug, PartialEq)]
         #[allow(non_camel_case_types)]
-        pub(crate) enum Keyword {
+        pub enum Keyword {
             $($var,)*
         }
 
         #[derive(Debug)]
-        pub(crate) struct NotKeywordError {}
+        pub struct NotKeywordError {}
 
         impl std::fmt::Display for NotKeywordError {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

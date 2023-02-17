@@ -4,8 +4,7 @@ mod error;
 // mod table;
 
 pub use error::{Error, Result};
-
-use {super::LogicalNode, parser::ast::Statement};
+use {super::LogicalNode, ast::Statement};
 
 struct Generator {}
 

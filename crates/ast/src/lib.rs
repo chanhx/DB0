@@ -1,10 +1,9 @@
-pub mod ddl;
-pub mod dml;
+mod common;
 pub mod expr;
+mod stmt;
+pub mod token;
 
-use crate::common::*;
-
-use self::{ddl::*, dml::*};
+pub use crate::{common::*, stmt::*};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {

@@ -1,6 +1,9 @@
 use {
-    super::{expr::Expression, Query},
-    crate::common::{Identifier, Spanned},
+    crate::{
+        common::{Identifier, Spanned},
+        expr::Expression,
+        Query,
+    },
     common::pub_fields_struct,
     def::DataType,
 };

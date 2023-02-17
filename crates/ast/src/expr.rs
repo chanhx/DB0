@@ -1,7 +1,7 @@
 //! The definition of `Expression` is directly inspired by `toydb`.
 use crate::{
     common::{ColumnRef, Identifier},
-    lexer::{Keyword, Token},
+    token::{Keyword, Token},
 };
 
 #[derive(Debug, PartialEq)]
@@ -36,7 +36,7 @@ pub enum Literal {
     String(String),
 }
 
-pub(crate) trait Operator: Sized {
+pub trait Operator: Sized {
     /// Looks up the corresponding operator for a token, if one exists
     fn from(token: &Token) -> Option<Self>;
 

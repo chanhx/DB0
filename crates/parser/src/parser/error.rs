@@ -1,4 +1,4 @@
-use crate::{common::Span, lexer};
+use {crate::lexer, ast::Span};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
