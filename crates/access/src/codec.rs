@@ -41,6 +41,7 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Clone)]
 pub struct Codec {
     columns: Vec<Column>,
     var_lens_byte_count: usize,
@@ -223,7 +224,7 @@ trait WriteValue: io::Write {
 impl WriteValue for Cursor<&mut [u8]> {}
 
 #[cfg(test)]
-mod test {
+mod tests {
     use {super::*, def::DataType};
 
     // #[test]

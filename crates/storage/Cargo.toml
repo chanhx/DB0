@@ -8,10 +8,10 @@ edition.workspace = true
 
 [dependencies]
 lru = "0.9"
-snafu = { version = "0.7", features = ["backtraces-impl-std"]}
+snafu.workspace = true
 
 common.workspace = true
 def.workspace = true
 
 [dev-dependencies]
-tempfile = "3"
+tempfile.workspace = true

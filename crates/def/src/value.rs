@@ -11,7 +11,7 @@ macro_rules! define_value {
         size_of::<$raw>()
     };
 
-    ($($variant:ident($raw:ty),)*) => {
+    ($($variant:ident($raw:tt),)*) => {
         #[derive(Debug, Clone, PartialEq)]
         pub enum Value {
             Null,

@@ -1,4 +1,4 @@
-mod btree;
+pub mod btree;
 mod codec;
 mod slotted_page;
 

@@ -11,11 +11,8 @@ use {
         meta::Meta,
         node::{InsertEffect, Node},
     },
-    def::{
-        storage::{Decoder, Encoder},
-        SqlType,
-    },
-    error::{Error, Result},
+    def::storage::{Decoder, Encoder},
+    error::Result,
     snafu::ResultExt,
     storage::{
         buffer::{BufferManager, BufferRef, FileNode, PageTag},
@@ -45,32 +42,33 @@ where
     C: Encoder<Item = K> + Decoder<Item = K>,
     K: Ord,
 {
-    pub fn new(
-        key_codec: C,
-        manager: &mut BufferManager,
-        node_capacity: u32,
-        file_node: FileNode,
-    ) -> Result<Self> {
-        let mut btree = Self {
+    pub fn new(key_codec: C, node_capacity: u32, file_node: FileNode) -> Self {
+        Self {
             key_codec,
             node_capacity: node_capacity as usize,
             file_node,
-        };
+        }
+    }
 
-        let mut meta_page_ref = btree.create_page(manager)?;
+    pub fn init(&mut self, manager: &mut BufferManager) -> Result<()> {
+        let mut meta_page_ref = self.create_page(manager)?;
         let meta = Meta::new(meta_page_ref.as_slice_mut());
-        meta.init(node_capacity);
+        meta.init(self.node_capacity as u32);
 
         // TODO: create root page when it is needed
-        let mut root_page_ref = btree.create_page(manager)?;
-        let mut root = Leaf::new(&mut root_page_ref, node_capacity as usize, &btree.key_codec);
+        let mut root_page_ref = self.create_page(manager)?;
+        let mut root = Leaf::new(
+            &mut root_page_ref,
+            self.node_capacity as usize,
+            &self.key_codec,
+        );
         root.init(0, 0);
         meta.root = root_page_ref.page_num();
 
         root_page_ref.set_dirty();
         meta_page_ref.set_dirty();
 
-        Ok(btree)
+        Ok(())
     }
 
     fn root_page_num(&self, manager: &BufferManager) -> Result<PageNum> {
@@ -256,7 +254,9 @@ mod tests {
 
         let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
         let file_node = FileNode::new(1, 2, 3);
-        let mut btree = BTree::new(codec, &mut manager, 30, file_node)?;
+
+        let mut btree = BTree::new(codec, 30, file_node);
+        btree.init(&mut manager)?;
 
         let range = 0..120;
 
@@ -287,7 +287,9 @@ mod tests {
 
         let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
         let file_node = FileNode::new(1, 2, 3);
-        let mut btree = BTree::new(codec, &mut manager, 30, file_node)?;
+
+        let mut btree = BTree::new(codec, 30, file_node);
+        btree.init(&mut manager)?;
 
         let mut rng = rand::thread_rng();
         let mut nums: Vec<u8> = (0..120).collect();
@@ -311,41 +313,42 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn flush() -> Result<()> {
-    //     let size = NonZeroUsize::new(10).unwrap();
-    //     let replacer = LruReplacer::new(size);
+    #[test]
+    fn flush() -> Result<()> {
+        let dir = tempdir().unwrap();
 
-    //     let mut manager = BufferManager::new(size, replacer);
-    //     let file_node = FileNode { table_id: 123 };
-    //     let mut btree = BTree::new(&mut manager, 30, 0, 0, file_node)?;
+        let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
+        let key_codec = Codec::new(vec![attr]);
 
-    //     let range = 0..120;
+        let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+        let file_node = FileNode::new(1, 2, 3);
 
-    //     for i in range.clone() {
-    //         btree.insert(&mut manager, &[i], &[i * 2 + 5])?;
-    //     }
+        let mut btree = BTree::new(key_codec.clone(), 30, file_node);
+        btree.init(&mut manager)?;
 
-    //     // let page_count = btree.page_count;
-    //     // for i in 0..page_count {
-    //     //     let page_tag = PageTag {
-    //     //         file_node,
-    //     //         page_num: i,
-    //     //     };
-    //     //     manager.flush_page(&page_tag).map_err(|e| Error::Internal {
-    //     //         details: "flush page error".to_string(),
-    //     //         source: Some(Box::new(e)),
-    //     //     })?;
-    //     // }
+        let range = 0..120;
 
-    //     let btree2 = BTree::init(file_node, &mut manager)?;
+        for i in range.clone() {
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &mut manager)?;
+        }
 
-    //     for i in range {
-    //         let btree_value = btree2.search_by_key(&mut manager, &[i]).unwrap().unwrap();
+        manager.flush_pages().unwrap();
 
-    //         assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
-    //     }
+        let btree2 = BTree::new(key_codec, 30, file_node);
 
-    //     Ok(())
-    // }
+        let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+
+        for i in range {
+            let btree_value = btree2
+                .retrieve(&vec![Value::TinyUint(i)], &mut manager)
+                .unwrap()
+                .unwrap();
+
+            assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
+        }
+
+        dir.close().unwrap();
+
+        Ok(())
+    }
 }

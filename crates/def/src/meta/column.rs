@@ -10,7 +10,7 @@ pub_fields_struct! {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use {
         super::*,
         crate::{meta::Column, Value},

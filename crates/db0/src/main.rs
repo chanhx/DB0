@@ -4,7 +4,7 @@ use {
     crate::cmd::Error as ExecutionError,
     clap::{arg, Command},
     snafu::prelude::*,
-    std::{env, process},
+    std::{env, path::PathBuf, process, str::FromStr},
 };
 
 #[derive(Debug, Snafu)]
@@ -55,7 +55,8 @@ fn try_main() -> Result<()> {
                 None => env::var(DB0_DATADIR).map_err(|_| Error::NoDataDirectory)?,
             };
 
-            cmd::create_global_meta_tables(data_dir.into()).context(ExecuteCommandSnafu)?;
+            cmd::create_meta_tables(PathBuf::from_str(&data_dir).unwrap().as_path())
+                .context(ExecuteCommandSnafu)?;
         }
         _ => unreachable!(),
     }

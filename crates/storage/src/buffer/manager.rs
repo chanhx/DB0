@@ -182,7 +182,13 @@ impl BufferManager {
     }
 
     pub fn flush_pages(&self) -> Result<()> {
-        unimplemented!()
+        self.descriptors
+            .iter()
+            .map(|desc| {
+                let buf_id = desc.borrow().buffer_id;
+                self.flush_page(buf_id)
+            })
+            .collect()
     }
 
     pub(super) fn get_buffer_id(&self, page_tag: &PageTag) -> Option<BufferId> {

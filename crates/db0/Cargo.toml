@@ -8,7 +8,11 @@ edition.workspace = true
 
 [dependencies]
 clap = "4.0"
-snafu = { version = "0.7", features = ["backtraces-impl-std"]}
+snafu.workspace = true
 
+access.workspace = true
 def.workspace = true
 storage.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

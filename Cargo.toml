@@ -13,3 +13,6 @@ def = { path = "./crates/def" }
 parser = { path = "./crates/parser" }
 planner = { path = "./crates/planner" }
 storage = { path = "./crates/storage" }
+
+# dev-dependencies
+tempfile = "3"
