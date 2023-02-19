@@ -69,7 +69,7 @@ define_types! {
 }
 
 impl DataType {
-    pub const fn value_repr(&self) -> (SqlType, i32) {
+    pub const fn value_repr(&self) -> (SqlType, u16) {
         match self {
             Self::Boolean => (SqlType::Boolean, 1),
 
@@ -86,8 +86,8 @@ impl DataType {
             Self::Float => (SqlType::Float, 4),
             Self::Double => (SqlType::Double, 8),
 
-            Self::Char(len) => (SqlType::Char, *len as i32),
-            Self::Varchar(len) => (SqlType::Varchar, *len as i32),
+            Self::Char(len) => (SqlType::Char, *len as u16),
+            Self::Varchar(len) => (SqlType::Varchar, *len as u16),
         }
     }
 }

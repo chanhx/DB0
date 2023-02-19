@@ -29,14 +29,7 @@ mod tests {
         .enumerate()
         .map(|(i, (name, ty))| {
             let (type_id, type_len) = ty.value_repr();
-            Column::new(
-                1,
-                i as i16 + 1,
-                name.to_string(),
-                type_id,
-                type_len as u16,
-                false,
-            )
+            Column::new(1, i as i16 + 1, name.to_string(), type_id, type_len, false)
         })
         .for_each(|col| {
             let values: Vec<Value> = col.clone().into();

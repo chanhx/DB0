@@ -262,7 +262,7 @@ mod tests {
                 i as i16,
                 name.to_string(),
                 type_id,
-                type_len as u16,
+                type_len,
                 is_nullable,
             )
         })

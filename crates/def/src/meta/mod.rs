@@ -78,7 +78,7 @@ macro_rules! meta_table_struct {
                     Table {
                         id: MetaTableId::$name as TableId,
                         name: stringify!($name).to_string().to_lowercase(),
-                        schema_id: SCHEMA_ID_CATALOG,
+                        schema_id: SCHEMA_ID_META,
                     }
                 }
 
@@ -90,7 +90,7 @@ macro_rules! meta_table_struct {
                                 num: ${index()} + 1,
                                 name: stringify!($prop).to_string(),
                                 type_id: DataType::$sql_ty$(($constraint))?.value_repr().0,
-                                type_len: DataType::$sql_ty$(($constraint))?.value_repr().1 as u16,
+                                type_len: DataType::$sql_ty$(($constraint))?.value_repr().1,
                                 is_nullable: false,
                             },
                         )*
