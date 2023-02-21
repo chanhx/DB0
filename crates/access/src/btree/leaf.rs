@@ -82,7 +82,7 @@ where
     }
 
     // TODO: check slot state
-    fn search_pos(&self, key: &K) -> std::result::Result<usize, usize> {
+    pub(super) fn search(&self, key: &K) -> std::result::Result<usize, usize> {
         let slots = self.slotted_page.slots();
 
         slots.binary_search_by_key(key, |slot| self.key(slot.range()).unwrap())
@@ -92,14 +92,7 @@ where
         let slots = self.slotted_page.slots();
 
         match slots.binary_search_by_key(key, |slot| self.key(slot.range()).unwrap()) {
-            Err(_) => {
-                println!("key: {:#?}", self.key_codec.encode(key).unwrap());
-
-                // for slot in self.slotted_page.slots() {
-                //     print!("{:#?}", self.raw_key(slot.range()));
-                // }
-                Ok(None)
-            }
+            Err(_) => Ok(None),
             Ok(i) => {
                 let slot = slots[i];
 
@@ -107,6 +100,24 @@ where
                 Ok(Some(value))
             }
         }
+    }
+
+    pub(super) fn entries_count(&self) -> usize {
+        self.slotted_page.slot_count()
+    }
+
+    pub(super) fn next_page_num(&self) -> PageNum {
+        self.header.next_page_num
+    }
+
+    pub(super) fn get_entry(&self, index: usize) -> Option<(K, Vec<u8>)> {
+        let slot = self.slotted_page.get_slot(index)?;
+        let range = slot.range();
+
+        let key = self.key(range.clone()).unwrap();
+        let value = self.get_value(range).unwrap().into();
+
+        Some((key, value))
     }
 
     fn get_value(&self, range: Range<usize>) -> Result<&[u8]> {
@@ -129,7 +140,7 @@ where
     ) -> Result<Option<InsertEffect>> {
         let mut update_high_key = false;
 
-        let index = match self.search_pos(key) {
+        let index = match self.search(key) {
             Err(i) if i == self.slotted_page.slot_count() => {
                 update_high_key = true;
                 i

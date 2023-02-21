@@ -162,7 +162,11 @@ mod tests {
         let btree = BTree::new(key_codec, 100, file_node);
 
         let key = vec![Value::Uint(meta::Column::TABLE_ID)];
-        let values = btree.retrieve(&key, &mut manager).unwrap().unwrap();
+        let (cursor, is_matched) = btree.search(&key, &mut manager).unwrap().unwrap();
+
+        let (_, values) = cursor.get_entry(&mut manager).unwrap();
+
+        assert!(is_matched);
 
         let (values, _) = values_codec.decode(&values).unwrap();
         let table = meta::Table::try_from([key, values].concat()).unwrap();

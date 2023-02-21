@@ -1,9 +1,11 @@
 mod branch;
+mod cursor;
 pub mod error;
 mod leaf;
 mod meta;
 mod node;
 
+pub use cursor::Cursor;
 use {
     self::{
         branch::Branch,
@@ -184,7 +186,11 @@ where
         Ok(())
     }
 
-    pub fn retrieve(&self, key: &K, manager: &mut BufferManager) -> Result<Option<Vec<u8>>> {
+    pub fn search<'a, 'b, 'c>(
+        &'a self,
+        key: &'b K,
+        manager: &'c mut BufferManager,
+    ) -> Result<Option<(Cursor<'a, C>, bool)>> {
         let mut page_num = self.root_page_num(manager)?;
 
         loop {
@@ -198,7 +204,12 @@ where
                     None => return Ok(None),
                 },
                 Node::Leaf(leaf) => {
-                    return leaf.retrieve(key).map(|r| r.map(|v| v.to_vec()));
+                    let (index, is_matched) = match leaf.search(key) {
+                        Ok(i) => (i, true),
+                        Err(i) => (i, false),
+                    };
+
+                    return Ok(Some((Cursor::new(self, page_num, index), is_matched)));
                 }
             }
         }
@@ -265,12 +276,15 @@ mod tests {
         }
 
         for i in range {
-            let btree_value = btree
-                .retrieve(&vec![Value::TinyUint(i)], &mut manager)
+            let (cursor, is_matched) = btree
+                .search(&vec![Value::TinyUint(i)], &mut manager)
                 .unwrap()
                 .unwrap();
 
-            assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
+            let (_, value) = cursor.get_entry(&mut manager).unwrap();
+
+            assert!(is_matched);
+            assert_eq!(&[i * 2 + 5].as_ref(), &value);
         }
 
         dir.close().unwrap();
@@ -300,12 +314,15 @@ mod tests {
         }
 
         for &i in nums.iter() {
-            let btree_value = btree
-                .retrieve(&vec![Value::TinyUint(i)], &mut manager)
+            let (cursor, is_matched) = btree
+                .search(&vec![Value::TinyUint(i)], &mut manager)
                 .unwrap()
                 .unwrap();
 
-            assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
+            let (_, value) = cursor.get_entry(&mut manager).unwrap();
+
+            assert!(is_matched);
+            assert_eq!(&[i * 2 + 5].as_ref(), &value);
         }
 
         dir.close().unwrap();
@@ -339,12 +356,15 @@ mod tests {
         let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
 
         for i in range {
-            let btree_value = btree2
-                .retrieve(&vec![Value::TinyUint(i)], &mut manager)
+            let (cursor, is_matched) = btree2
+                .search(&vec![Value::TinyUint(i)], &mut manager)
                 .unwrap()
                 .unwrap();
 
-            assert_eq!(&[i * 2 + 5].as_ref(), &btree_value);
+            let (_, value) = cursor.get_entry(&mut manager).unwrap();
+
+            assert!(is_matched);
+            assert_eq!(&[i * 2 + 5].as_ref(), &value);
         }
 
         dir.close().unwrap();

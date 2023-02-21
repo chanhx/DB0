@@ -1,5 +1,5 @@
 use {
-    bytemuck::{cast_slice, cast_slice_mut, from_bytes_mut},
+    bytemuck::{cast_slice, cast_slice_mut, from_bytes, from_bytes_mut},
     core::{mem::size_of, ops::Range},
     snafu::prelude::*,
     std::backtrace::Backtrace,
@@ -117,6 +117,17 @@ impl<'a> SlottedPage<'a> {
 
     pub fn slots(&self) -> &[Slot] {
         cast_slice(&self.body[..self.slots_size()])
+    }
+
+    pub fn get_slot(&self, index: usize) -> Option<&Slot> {
+        if index > self.slot_count() {
+            return None;
+        }
+
+        const SLOT_SIZE: usize = size_of::<Slot>();
+        Some(from_bytes(
+            &self.body[index * SLOT_SIZE..(index + 1) * SLOT_SIZE],
+        ))
     }
 
     fn slots_mut(&mut self) -> &mut [Slot] {
