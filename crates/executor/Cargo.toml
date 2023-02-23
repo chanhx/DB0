@@ -1,0 +1,17 @@
+[package]
+name = "executor"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+snafu.workspace = true
+
+access.workspace = true
+bound-ast.workspace = true
+def.workspace = true
+storage.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

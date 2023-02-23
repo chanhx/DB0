@@ -12,6 +12,7 @@ ast = { path = "./crates/ast" }
 bound-ast = { path = "./crates/bound-ast" }
 common = { path = "./crates/common" }
 def = { path = "./crates/def" }
+executor = { path = "./crates/executor" }
 parser = { path = "./crates/parser" }
 planner = { path = "./crates/planner" }
 semantic-analyzer = { path = "./crates/semantic-analyzer" }
