@@ -16,17 +16,17 @@ use {
 
 pub fn create_meta_tables(data_dir: &Path) -> Result<()> {
     let capacity = 100;
-    let mut manager = BufferManager::new(capacity, DEFAULT_PAGE_SIZE, data_dir.to_path_buf());
+    let manager = BufferManager::new(capacity, DEFAULT_PAGE_SIZE, data_dir.to_path_buf());
 
     let database_id = 1;
 
     let file_node = FileNode::global_meta(meta::Database::TABLE_ID);
     create_directory(data_dir, &file_node)?;
-    create_global_tables(&mut manager, database_id, file_node)?;
+    create_global_tables(&manager, database_id, file_node)?;
 
     let file_node = FileNode::new(meta::TABLESPACE_ID_DEFAULT, database_id, 1);
     create_directory(data_dir, &file_node)?;
-    init_database(&mut manager, database_id)?;
+    init_database(&manager, database_id)?;
 
     manager.flush_pages().context(error::StorageSnafu)?;
 
@@ -43,7 +43,7 @@ fn create_directory(data_dir: &Path, file_node: &FileNode) -> Result<()> {
 }
 
 fn create_global_tables(
-    manager: &mut BufferManager,
+    manager: &BufferManager,
     database_id: DatabaseId,
     file_node: FileNode,
 ) -> Result<()> {
@@ -61,8 +61,8 @@ fn create_global_tables(
     let k_columns = columns;
     let key_codec = Codec::new(k_columns);
 
+    BTree::<Codec>::init(file_node, &manager).context(error::AccessSnafu)?;
     let mut btree = BTree::new(key_codec, 30, file_node);
-    btree.init(manager).context(error::AccessSnafu)?;
 
     let values_codec = Codec::new(v_columns);
     let values = values_codec.encode(&values).unwrap();
@@ -72,7 +72,7 @@ fn create_global_tables(
     Ok(())
 }
 
-fn init_database(manager: &mut BufferManager, database_id: DatabaseId) -> Result<()> {
+fn init_database(manager: &BufferManager, database_id: DatabaseId) -> Result<()> {
     {
         let tables = [meta::Table::table(), meta::Column::table()];
 
@@ -90,8 +90,8 @@ fn init_database(manager: &mut BufferManager, database_id: DatabaseId) -> Result
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
+        BTree::<Codec>::init(file_node, &manager).context(error::AccessSnafu)?;
         let mut btree = BTree::new(key_codec, 30, file_node);
-        btree.init(manager).context(error::AccessSnafu)?;
 
         for table in tables {
             let mut kv: Vec<Value> = table.into();
@@ -120,8 +120,8 @@ fn init_database(manager: &mut BufferManager, database_id: DatabaseId) -> Result
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
+        BTree::<Codec>::init(file_node, &manager).context(error::AccessSnafu)?;
         let mut btree = BTree::new(key_codec, 30, file_node);
-        btree.init(manager).context(error::AccessSnafu)?;
 
         columns.into_iter().flatten().for_each(|column| {
             let mut kv: Vec<Value> = column.into();
@@ -147,7 +147,7 @@ mod tests {
 
         create_meta_tables(path).unwrap();
 
-        let mut manager = BufferManager::new(100, DEFAULT_PAGE_SIZE, path.to_path_buf());
+        let manager = BufferManager::new(100, DEFAULT_PAGE_SIZE, path.to_path_buf());
 
         let file_node = FileNode::new(meta::TABLESPACE_ID_DEFAULT, 1, meta::Table::TABLE_ID);
 
@@ -162,9 +162,9 @@ mod tests {
         let btree = BTree::new(key_codec, 100, file_node);
 
         let key = vec![Value::Uint(meta::Column::TABLE_ID)];
-        let (cursor, is_matched) = btree.search(&key, &mut manager).unwrap().unwrap();
+        let (cursor, is_matched) = btree.search(&key, &manager).unwrap().unwrap();
 
-        let (_, values) = cursor.get_entry(&mut manager).unwrap();
+        let (_, values) = cursor.get_entry(&manager).unwrap();
 
         assert!(is_matched);
 

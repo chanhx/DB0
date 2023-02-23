@@ -52,25 +52,37 @@ where
         }
     }
 
-    pub fn init(&mut self, manager: &mut BufferManager) -> Result<()> {
-        let mut meta_page_ref = self.create_page(manager)?;
+    pub fn init(file_node: FileNode, manager: &BufferManager) -> Result<()> {
+        let mut meta_page_ref = manager.new_page(&file_node).context(error::BufferSnafu)?;
         let meta = Meta::new(meta_page_ref.as_slice_mut());
-        meta.init(self.node_capacity as u32);
+        meta.root = 0;
 
-        // TODO: create root page when it is needed
-        let mut root_page_ref = self.create_page(manager)?;
+        meta_page_ref.set_dirty();
+
+        Ok(())
+    }
+
+    fn create_root_page(&mut self, manager: &BufferManager) -> Result<PageNum> {
+        let mut root_page_ref = manager
+            .new_page(&self.file_node)
+            .context(error::BufferSnafu)?;
+
         let mut root = Leaf::new(
             &mut root_page_ref,
             self.node_capacity as usize,
             &self.key_codec,
         );
         root.init(0, 0);
-        meta.root = root_page_ref.page_num();
-
         root_page_ref.set_dirty();
-        meta_page_ref.set_dirty();
 
-        Ok(())
+        let page_num = root_page_ref.page_num();
+
+        let mut meta_page_ref = self.fetch_page(manager, META_PAGE_NUM)?;
+        let meta = Meta::new(meta_page_ref.as_slice_mut());
+        meta.init(self.node_capacity as u32);
+        meta.root = page_num;
+
+        Ok(page_num)
     }
 
     fn root_page_num(&self, manager: &BufferManager) -> Result<PageNum> {
@@ -80,6 +92,10 @@ where
 
     pub fn insert(&mut self, key: &K, value: &[u8], manager: &BufferManager) -> Result<()> {
         let mut page_num = self.root_page_num(manager)?;
+        if page_num == 0 {
+            page_num = self.create_root_page(manager)?;
+        }
+
         let mut insert_effect;
         let mut stack = None;
 
@@ -103,6 +119,7 @@ where
                 Node::Leaf(mut leaf) => {
                     if let Some(effect) = leaf.insert(key, value, manager, &self.file_node).unwrap()
                     {
+                        page_ref.set_dirty();
                         insert_effect = effect;
                         break;
                     }
@@ -149,6 +166,7 @@ where
                             )
                             .unwrap()
                         {
+                            page_ref.set_dirty();
                             insert_effect = effect
                         } else {
                             break;
@@ -165,7 +183,9 @@ where
                         let mut meta_page = self.fetch_page(manager, META_PAGE_NUM)?;
                         let meta = Meta::new(meta_page.as_slice_mut());
 
-                        let mut new_root_page = self.create_page(manager)?;
+                        let mut new_root_page = manager
+                            .new_page(&self.file_node)
+                            .context(error::BufferSnafu)?;
                         let mut new_root = Branch::new(
                             new_root_page.as_slice_mut(),
                             self.node_capacity,
@@ -189,7 +209,7 @@ where
     pub fn search<'a, 'b, 'c>(
         &'a self,
         key: &'b K,
-        manager: &'c mut BufferManager,
+        manager: &'c BufferManager,
     ) -> Result<Option<(Cursor<'a, C>, bool)>> {
         let mut page_num = self.root_page_num(manager)?;
 
@@ -215,7 +235,7 @@ where
         }
     }
 
-    // pub fn delete(&mut self, key: &K, manager: &mut BufferManager) -> Result<usize> {
+    // pub fn delete(&mut self, key: &K, manager: &BufferManager) -> Result<usize> {
     //     unimplemented!()
     // }
 
@@ -230,12 +250,6 @@ where
         };
 
         manager.fetch_page(page_tag).context(error::BufferSnafu)
-    }
-
-    fn create_page<'a>(&'_ mut self, manager: &'a BufferManager) -> Result<BufferRef<'a>> {
-        manager
-            .new_page(&self.file_node)
-            .context(error::BufferSnafu)
     }
 }
 
@@ -263,25 +277,25 @@ mod tests {
         let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
         let codec = Codec::new(vec![attr]);
 
-        let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
         let file_node = FileNode::new(1, 2, 3);
 
+        BTree::<Codec>::init(file_node, &manager)?;
         let mut btree = BTree::new(codec, 30, file_node);
-        btree.init(&mut manager)?;
 
         let range = 0..120;
 
         for i in range.clone() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &mut manager)?;
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &manager)?;
         }
 
         for i in range {
             let (cursor, is_matched) = btree
-                .search(&vec![Value::TinyUint(i)], &mut manager)
+                .search(&vec![Value::TinyUint(i)], &manager)
                 .unwrap()
                 .unwrap();
 
-            let (_, value) = cursor.get_entry(&mut manager).unwrap();
+            let (_, value) = cursor.get_entry(&manager).unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);
@@ -299,27 +313,27 @@ mod tests {
         let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
         let codec = Codec::new(vec![attr]);
 
-        let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
         let file_node = FileNode::new(1, 2, 3);
 
+        BTree::<Codec>::init(file_node, &manager)?;
         let mut btree = BTree::new(codec, 30, file_node);
-        btree.init(&mut manager)?;
 
         let mut rng = rand::thread_rng();
         let mut nums: Vec<u8> = (0..120).collect();
         nums.shuffle(&mut rng);
 
         for &i in nums.iter() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &mut manager)?;
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &manager)?;
         }
 
         for &i in nums.iter() {
             let (cursor, is_matched) = btree
-                .search(&vec![Value::TinyUint(i)], &mut manager)
+                .search(&vec![Value::TinyUint(i)], &manager)
                 .unwrap()
                 .unwrap();
 
-            let (_, value) = cursor.get_entry(&mut manager).unwrap();
+            let (_, value) = cursor.get_entry(&manager).unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);
@@ -337,31 +351,31 @@ mod tests {
         let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
         let key_codec = Codec::new(vec![attr]);
 
-        let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
         let file_node = FileNode::new(1, 2, 3);
 
+        BTree::<Codec>::init(file_node, &manager)?;
         let mut btree = BTree::new(key_codec.clone(), 30, file_node);
-        btree.init(&mut manager)?;
 
         let range = 0..120;
 
         for i in range.clone() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &mut manager)?;
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &manager)?;
         }
 
         manager.flush_pages().unwrap();
 
         let btree2 = BTree::new(key_codec, 30, file_node);
 
-        let mut manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
 
         for i in range {
             let (cursor, is_matched) = btree2
-                .search(&vec![Value::TinyUint(i)], &mut manager)
+                .search(&vec![Value::TinyUint(i)], &manager)
                 .unwrap()
                 .unwrap();
 
-            let (_, value) = cursor.get_entry(&mut manager).unwrap();
+            let (_, value) = cursor.get_entry(&manager).unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);

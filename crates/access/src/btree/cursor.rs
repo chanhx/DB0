@@ -29,7 +29,7 @@ where
         }
     }
 
-    pub fn move_forward(&mut self, manager: &mut BufferManager) -> Result<()> {
+    pub fn move_forward(&mut self, manager: &BufferManager) -> Result<()> {
         let mut page_ref = self.btree.fetch_page(manager, self.page_num).unwrap();
 
         let node = Node::new(
@@ -57,7 +57,7 @@ where
     // the cursor visits a leaf page every time it needs an entry
     // it's better to build a scanner, and pass it to the btree
     // leave this problem alone for now
-    pub fn get_entry(&self, manager: &mut BufferManager) -> Option<(K, Vec<u8>)> {
+    pub fn get_entry(&self, manager: &BufferManager) -> Option<(K, Vec<u8>)> {
         let mut page_ref = self.btree.fetch_page(manager, self.page_num).unwrap();
 
         let node = Node::new(
