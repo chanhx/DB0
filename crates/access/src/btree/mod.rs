@@ -33,22 +33,30 @@ pub enum PageType {
 
 const META_PAGE_NUM: PageNum = 0;
 
-pub struct BTree<C> {
+pub struct BTree<'a, C> {
     key_codec: C,
     node_capacity: usize,
     file_node: FileNode,
+
+    manager: &'a BufferManager,
 }
 
-impl<C, K> BTree<C>
+impl<'a, C, K> BTree<'a, C>
 where
     C: Encoder<Item = K> + Decoder<Item = K>,
     K: Ord,
 {
-    pub fn new(key_codec: C, node_capacity: u32, file_node: FileNode) -> Self {
+    pub fn new(
+        key_codec: C,
+        node_capacity: u32,
+        file_node: FileNode,
+        manager: &'a BufferManager,
+    ) -> Self {
         Self {
             key_codec,
             node_capacity: node_capacity as usize,
             file_node,
+            manager,
         }
     }
 
@@ -62,8 +70,9 @@ where
         Ok(())
     }
 
-    fn create_root_page(&mut self, manager: &BufferManager) -> Result<PageNum> {
-        let mut root_page_ref = manager
+    fn create_root_page(&mut self) -> Result<PageNum> {
+        let mut root_page_ref = self
+            .manager
             .new_page(&self.file_node)
             .context(error::BufferSnafu)?;
 
@@ -77,7 +86,7 @@ where
 
         let page_num = root_page_ref.page_num();
 
-        let mut meta_page_ref = self.fetch_page(manager, META_PAGE_NUM)?;
+        let mut meta_page_ref = self.fetch_page(META_PAGE_NUM)?;
         let meta = Meta::new(meta_page_ref.as_slice_mut());
         meta.init(self.node_capacity as u32);
         meta.root = page_num;
@@ -85,22 +94,22 @@ where
         Ok(page_num)
     }
 
-    fn root_page_num(&self, manager: &BufferManager) -> Result<PageNum> {
-        let mut meta_page_ref = self.fetch_page(manager, META_PAGE_NUM)?;
+    fn root_page_num(&self) -> Result<PageNum> {
+        let mut meta_page_ref = self.fetch_page(META_PAGE_NUM)?;
         Ok(Meta::new(meta_page_ref.as_slice_mut()).root)
     }
 
-    pub fn insert(&mut self, key: &K, value: &[u8], manager: &BufferManager) -> Result<()> {
-        let mut page_num = self.root_page_num(manager)?;
+    pub fn insert(&mut self, key: &K, value: &[u8]) -> Result<()> {
+        let mut page_num = self.root_page_num()?;
         if page_num == 0 {
-            page_num = self.create_root_page(manager)?;
+            page_num = self.create_root_page()?;
         }
 
         let mut insert_effect;
         let mut stack = None;
 
         loop {
-            let mut page_ref = self.fetch_page(manager, page_num)?;
+            let mut page_ref = self.fetch_page(page_num)?;
 
             let node = Node::new(&mut page_ref, self.node_capacity, &self.key_codec)?;
 
@@ -117,7 +126,9 @@ where
                     page_num = child_page_num;
                 }
                 Node::Leaf(mut leaf) => {
-                    if let Some(effect) = leaf.insert(key, value, manager, &self.file_node).unwrap()
+                    if let Some(effect) = leaf
+                        .insert(key, value, self.manager, &self.file_node)
+                        .unwrap()
                     {
                         page_ref.set_dirty();
                         insert_effect = effect;
@@ -138,7 +149,7 @@ where
                 } = *stk;
                 stack = parent;
 
-                let mut page_ref = self.fetch_page(manager, page_num)?;
+                let mut page_ref = self.fetch_page(page_num)?;
 
                 let mut branch =
                     Branch::new(page_ref.as_slice_mut(), self.node_capacity, &self.key_codec);
@@ -161,7 +172,7 @@ where
                                 splited_page_num,
                                 slot_num,
                                 raw_high_key,
-                                manager,
+                                self.manager,
                                 &self.file_node,
                             )
                             .unwrap()
@@ -180,10 +191,11 @@ where
                         raw_high_key,
                         splited_page_num,
                     } => {
-                        let mut meta_page = self.fetch_page(manager, META_PAGE_NUM)?;
+                        let mut meta_page = self.fetch_page(META_PAGE_NUM)?;
                         let meta = Meta::new(meta_page.as_slice_mut());
 
-                        let mut new_root_page = manager
+                        let mut new_root_page = self
+                            .manager
                             .new_page(&self.file_node)
                             .context(error::BufferSnafu)?;
                         let mut new_root = Branch::new(
@@ -206,15 +218,11 @@ where
         Ok(())
     }
 
-    pub fn search<'a, 'b, 'c>(
-        &'a self,
-        key: &'b K,
-        manager: &'c BufferManager,
-    ) -> Result<Option<(Cursor<'a, C>, bool)>> {
-        let mut page_num = self.root_page_num(manager)?;
+    pub fn search<'b, 'c>(&'b self, key: &'c K) -> Result<Option<(Cursor<'a, 'b, C>, bool)>> {
+        let mut page_num = self.root_page_num()?;
 
         loop {
-            let mut page_ref = self.fetch_page(manager, page_num)?;
+            let mut page_ref = self.fetch_page(page_num)?;
 
             let node = Node::new(&mut page_ref, self.node_capacity, &self.key_codec)?;
 
@@ -239,17 +247,15 @@ where
     //     unimplemented!()
     // }
 
-    fn fetch_page<'a>(
-        &'_ self,
-        manager: &'a BufferManager,
-        page_num: PageNum,
-    ) -> Result<BufferRef<'a>> {
+    fn fetch_page(&self, page_num: PageNum) -> Result<BufferRef<'a>> {
         let page_tag = PageTag {
             file_node: self.file_node,
             page_num,
         };
 
-        manager.fetch_page(page_tag).context(error::BufferSnafu)
+        self.manager
+            .fetch_page(page_tag)
+            .context(error::BufferSnafu)
     }
 }
 
@@ -281,21 +287,18 @@ mod tests {
         let file_node = FileNode::new(1, 2, 3);
 
         BTree::<Codec>::init(file_node, &manager)?;
-        let mut btree = BTree::new(codec, 30, file_node);
+        let mut btree = BTree::new(codec, 30, file_node, &manager);
 
         let range = 0..120;
 
         for i in range.clone() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &manager)?;
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5])?;
         }
 
         for i in range {
-            let (cursor, is_matched) = btree
-                .search(&vec![Value::TinyUint(i)], &manager)
-                .unwrap()
-                .unwrap();
+            let (cursor, is_matched) = btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
 
-            let (_, value) = cursor.get_entry(&manager).unwrap();
+            let (_, value) = cursor.get_entry().unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);
@@ -317,23 +320,20 @@ mod tests {
         let file_node = FileNode::new(1, 2, 3);
 
         BTree::<Codec>::init(file_node, &manager)?;
-        let mut btree = BTree::new(codec, 30, file_node);
+        let mut btree = BTree::new(codec, 30, file_node, &manager);
 
         let mut rng = rand::thread_rng();
         let mut nums: Vec<u8> = (0..120).collect();
         nums.shuffle(&mut rng);
 
         for &i in nums.iter() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &manager)?;
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5])?;
         }
 
         for &i in nums.iter() {
-            let (cursor, is_matched) = btree
-                .search(&vec![Value::TinyUint(i)], &manager)
-                .unwrap()
-                .unwrap();
+            let (cursor, is_matched) = btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
 
-            let (_, value) = cursor.get_entry(&manager).unwrap();
+            let (_, value) = cursor.get_entry().unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);
@@ -355,27 +355,23 @@ mod tests {
         let file_node = FileNode::new(1, 2, 3);
 
         BTree::<Codec>::init(file_node, &manager)?;
-        let mut btree = BTree::new(key_codec.clone(), 30, file_node);
+        let mut btree = BTree::new(key_codec.clone(), 30, file_node, &manager);
 
         let range = 0..120;
 
         for i in range.clone() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5], &manager)?;
+            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5])?;
         }
 
         manager.flush_pages().unwrap();
 
-        let btree2 = BTree::new(key_codec, 30, file_node);
-
         let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
+        let btree2 = BTree::new(key_codec, 30, file_node, &manager);
 
         for i in range {
-            let (cursor, is_matched) = btree2
-                .search(&vec![Value::TinyUint(i)], &manager)
-                .unwrap()
-                .unwrap();
+            let (cursor, is_matched) = btree2.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
 
-            let (_, value) = cursor.get_entry(&manager).unwrap();
+            let (_, value) = cursor.get_entry().unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);

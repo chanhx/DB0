@@ -87,14 +87,14 @@ impl Executor {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let mut btree = BTree::new(key_codec, 30, file_node);
+        let mut btree = BTree::new(key_codec, 30, file_node, manager);
 
         let mut kv: Vec<Value> = table.into();
         let values = kv.split_off(1);
         let key = kv;
 
         let values = values_codec.encode(&values).unwrap();
-        btree.insert(&key, &values, manager).context(AccessSnafu)
+        btree.insert(&key, &values).context(AccessSnafu)
     }
 
     fn create_column_records(
@@ -116,7 +116,7 @@ impl Executor {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let mut btree = BTree::new(key_codec, 30, file_node);
+        let mut btree = BTree::new(key_codec, 30, file_node, manager);
 
         columns.into_iter().for_each(|column| {
             let mut kv: Vec<Value> = column.into();
@@ -124,7 +124,7 @@ impl Executor {
             let key = kv;
 
             let values = values_codec.encode(&values).unwrap();
-            btree.insert(&key, &values, manager).unwrap();
+            btree.insert(&key, &values).unwrap();
         });
 
         Ok(())

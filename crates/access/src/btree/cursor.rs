@@ -2,7 +2,7 @@ use {
     super::{node::Node, BTree},
     def::storage::{Decoder, Encoder},
     snafu::prelude::*,
-    storage::{buffer::BufferManager, PageNum},
+    storage::PageNum,
 };
 
 #[derive(Debug, Snafu)]
@@ -10,18 +10,18 @@ pub enum Error {}
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub struct Cursor<'a, C> {
-    btree: &'a BTree<C>,
+pub struct Cursor<'a, 'b, C> {
+    btree: &'b BTree<'a, C>,
     page_num: PageNum,
     slot_num: usize,
 }
 
-impl<'a, C, K> Cursor<'a, C>
+impl<'a, 'b, C, K> Cursor<'a, 'b, C>
 where
     C: Encoder<Item = K> + Decoder<Item = K>,
     K: Ord,
 {
-    pub(super) fn new(btree: &'a BTree<C>, page_num: PageNum, slot_num: usize) -> Self {
+    pub(super) fn new(btree: &'b BTree<'a, C>, page_num: PageNum, slot_num: usize) -> Self {
         Self {
             btree,
             page_num,
@@ -29,8 +29,8 @@ where
         }
     }
 
-    pub fn move_forward(&mut self, manager: &BufferManager) -> Result<()> {
-        let mut page_ref = self.btree.fetch_page(manager, self.page_num).unwrap();
+    pub fn move_forward(&mut self) -> Result<()> {
+        let mut page_ref = self.btree.fetch_page(self.page_num).unwrap();
 
         let node = Node::new(
             &mut page_ref,
@@ -57,8 +57,8 @@ where
     // the cursor visits a leaf page every time it needs an entry
     // it's better to build a scanner, and pass it to the btree
     // leave this problem alone for now
-    pub fn get_entry(&self, manager: &BufferManager) -> Option<(K, Vec<u8>)> {
-        let mut page_ref = self.btree.fetch_page(manager, self.page_num).unwrap();
+    pub fn get_entry(&self) -> Option<(K, Vec<u8>)> {
+        let mut page_ref = self.btree.fetch_page(self.page_num).unwrap();
 
         let node = Node::new(
             &mut page_ref,
