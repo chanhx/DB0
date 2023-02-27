@@ -328,6 +328,7 @@ name = "semantic-analyzer"
 version = "0.1.0"
 dependencies = [
  "ast",
+ "binder",
  "bound-ast",
  "common",
  "def",

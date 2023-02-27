@@ -9,6 +9,14 @@ pub_fields_struct! {
     }
 }
 
+impl PartialEq for super::Column {
+    fn eq(&self, other: &Self) -> bool {
+        self.table_id == other.table_id && self.num == other.num
+    }
+}
+
+impl Eq for super::Column {}
+
 #[cfg(test)]
 mod tests {
     use {

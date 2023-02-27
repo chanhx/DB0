@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
                 if is_float {
                     Literal::Float(self.number_from_span(span)?).into()
                 } else {
-                    Literal::Integer(self.number_from_span(span)?).into()
+                    Literal::Int(self.number_from_span(span)?).into()
                 }
             },
             Spanned(Token::LeftParen, _) => {
@@ -109,7 +109,7 @@ mod tests {
                         table: Some(identifier_from_str("b")),
                     })),
                 ))),
-                Box::from(Expression::Literal(Literal::Integer(1))),
+                Box::from(Expression::Literal(Literal::Int(1))),
             ))),
             Box::new(Expression::Operation(Operation::Positive(Box::new(
                 Expression::Literal(Literal::Float(3.5)),

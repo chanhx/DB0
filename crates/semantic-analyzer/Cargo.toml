@@ -9,6 +9,7 @@ edition = "2021"
 snafu.workspace = true
 
 ast.workspace = true
+binder.workspace = true
 bound-ast.workspace = true
 common.workspace = true
 def.workspace = true

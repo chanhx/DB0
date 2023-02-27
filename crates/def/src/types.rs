@@ -1,7 +1,7 @@
 use {
     core::mem::transmute,
     snafu::prelude::*,
-    std::{backtrace::Backtrace, convert::TryInto},
+    std::{backtrace::Backtrace, convert::TryInto, fmt::Display},
 };
 
 #[derive(Debug, Snafu)]
@@ -21,12 +21,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 macro_rules! define_types {
     ($($var:ident$(($ty:ty))?,)*) => {
-        #[derive(Debug, PartialEq, Clone)]
+        #[derive(Debug, PartialEq, Clone, Hash)]
         pub enum DataType {
             $($var$(($ty))?,)*
         }
 
-        #[derive(Debug, PartialEq, Clone)]
+        #[derive(Debug, PartialEq, Clone, Hash)]
         #[repr(u16)]
         pub enum SqlType {
             $($var = ${index()} + 1,)*
@@ -98,5 +98,32 @@ impl SqlType {
             Self::Varchar => true,
             _ => false,
         }
+    }
+}
+
+impl Display for SqlType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Boolean => "boolean",
+                Self::TinyInt => "tiny integer",
+                Self::SmallInt => "small integer",
+                Self::Int => "integer",
+                Self::BigInt => "big integer",
+
+                Self::TinyUint => "tiny unsigned integer",
+                Self::SmallUint => "small unsigned integer",
+                Self::Uint => "unsigned integer",
+                Self::BigUint => "big integer",
+
+                Self::Float => "float",
+                Self::Double => "double",
+
+                Self::Char => "char",
+                Self::Varchar => "varying",
+            }
+        )
     }
 }

@@ -6,7 +6,7 @@ use {
     },
     ast::{
         token::{Keyword, Token},
-        InsertSource, Spanned, Statement,
+        InsertSource, InsertStmt, Spanned, Statement,
     },
 };
 
@@ -15,7 +15,7 @@ impl<'a> Parser<'a> {
         self.must_match(Token::Keyword(Keyword::INTO))?;
 
         let table = self.parse_identifier()?;
-        let columns = match self.tokens.peek() {
+        let targets = match self.tokens.peek() {
             Some(Ok(Spanned(Token::LeftParen, _))) => {
                 let Spanned(cols, _) =
                     self.parse_comma_separated_within_parentheses(Self::parse_identifier, false)?;
@@ -41,11 +41,11 @@ impl<'a> Parser<'a> {
             },
         });
 
-        Ok(Statement::Insert {
+        Ok(Statement::Insert(InsertStmt {
             table,
-            columns,
+            targets,
             source,
-        })
+        }))
     }
 }
 
@@ -63,22 +63,22 @@ mod tests {
             INSERT INTO def SELECT a, b FROM abc;
         ";
         let expected_output = vec![
-            Statement::Insert {
+            Statement::Insert(InsertStmt {
                 table: identifier_from_str("abc"),
-                columns: Some(vec![
+                targets: Some(vec![
                     identifier_from_str("a"),
                     identifier_from_str("b"),
                     identifier_from_str("c"),
                 ]),
                 source: InsertSource::Values(vec![vec![
-                    Expression::Literal(Literal::Integer(1)),
+                    Expression::Literal(Literal::Int(1)),
                     Expression::Literal(Literal::Float(3.14)),
                     Expression::Literal(Literal::Boolean(true)),
                 ]]),
-            },
-            Statement::Insert {
+            }),
+            Statement::Insert(InsertStmt {
                 table: identifier_from_str("def"),
-                columns: None,
+                targets: None,
                 source: InsertSource::FromQuery(Box::new(Query {
                     distinct: false,
                     targets: vec![
@@ -106,7 +106,7 @@ mod tests {
                     }),
                     cond: None,
                 })),
-            },
+            }),
         ];
 
         let output = Parser::parse(input).unwrap();

@@ -1,6 +1,6 @@
 use {
     common::pub_fields_struct,
-    def::{DataType, SchemaId},
+    def::{DataType, SchemaId, TableId, Value},
 };
 
 pub type ColumnNum = i16;
@@ -23,5 +23,13 @@ pub_fields_struct! {
         columns: Vec<Column>,
         primary_key: Option<Vec<ColumnNum>>,
         unique_constraints: Vec<Vec<ColumnNum>>,
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct InsertStmt {
+        table: TableId,
+        targets: Vec<ColumnNum>,
+        // TODO: support expressions
+        source: Vec<Vec<Value>>,
     }
 }

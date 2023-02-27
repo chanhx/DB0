@@ -31,7 +31,9 @@ impl From<Operation> for Expression {
 pub enum Literal {
     Null,
     Boolean(bool),
-    Integer(i64),
+    Int(i64),
+    // TODO: update parsing logic
+    Uint(u64),
     Float(f64),
     String(String),
 }

@@ -5,7 +5,7 @@ use {
 
 pub type Span = std::ops::RangeInclusive<usize>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Spanned<T>(pub T, pub Span);
 
 impl<T: PartialEq> PartialEq for Spanned<T> {

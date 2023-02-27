@@ -136,7 +136,7 @@ meta_table_struct! {
         space_id: (TableSpaceId, DataType::Uint),
     }
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Hash)]
     struct Column {
         table_id: (TableId, DataType::Uint),
         num: (i16, DataType::SmallInt),

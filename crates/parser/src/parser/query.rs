@@ -187,7 +187,7 @@ mod tests {
                     column: identifier_from_str("c"),
                     table: None,
                 })),
-                Box::new(Expression::Literal(Literal::Integer(0))),
+                Box::new(Expression::Literal(Literal::Int(0))),
             ))),
         })];
 

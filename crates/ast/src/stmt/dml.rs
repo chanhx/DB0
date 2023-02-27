@@ -35,6 +35,13 @@ pub enum InsertSource {
 
 pub_fields_struct! {
     #[derive(Debug, PartialEq)]
+    struct InsertStmt{
+        table: Identifier,
+        targets: Option<Vec<Identifier>>,
+        source: InsertSource,
+    }
+
+    #[derive(Debug, PartialEq)]
     struct Query {
         distinct: bool,
         targets: Vec<TargetElem>,

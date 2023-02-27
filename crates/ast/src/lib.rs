@@ -25,10 +25,6 @@ pub enum Statement {
     DropTable {
         name: Identifier,
     },
-    Insert {
-        table: Identifier,
-        columns: Option<Vec<Identifier>>,
-        source: InsertSource,
-    },
+    Insert(InsertStmt),
     Select(Query),
 }

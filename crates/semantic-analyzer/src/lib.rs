@@ -1,29 +1,28 @@
 mod stmt;
 
-use {bound_ast::Statement, snafu::prelude::*};
+use {binder::Binder, bound_ast::Statement, snafu::prelude::*};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("error in statement"))]
-    Statement {
-        source: Box<dyn snafu::Error>,
-    },
+    CreateTable { source: stmt::create_table::Error },
+
+    Insert { source: stmt::insert::Error },
 
     Unspported,
 }
 
-pub struct Analyzer {}
+pub struct Analyzer<'a> {
+    binder: &'a Binder,
+}
 
-impl Analyzer {
+impl Analyzer<'_> {
     pub fn analyze(&self, stmt: ast::Statement) -> Result<Statement, Error> {
         Ok(match stmt {
             ast::Statement::CreateTable(stmt) => {
-                self.analyze_create_table(stmt)
-                    .map_err(|e| Error::Statement {
-                        source: Box::new(e),
-                    })?
+                self.analyze_create_table(stmt).context(CreateTableSnafu)?
             }
-            _ => return Err(Error::Unspported),
+            ast::Statement::Insert(stmt) => self.analyze_insert(stmt).context(InsertSnafu)?,
+            _ => return Err(UnspportedSnafu.build()),
         })
     }
 }

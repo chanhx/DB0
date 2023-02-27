@@ -25,6 +25,7 @@ impl Executor {
                         source: Box::new(e),
                     })
             }
+            Statement::Insert(_) => unimplemented!(),
         }
     }
 }
