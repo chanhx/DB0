@@ -162,9 +162,9 @@ mod tests {
         let btree = BTree::new(key_codec, 100, file_node, &manager);
 
         let key = vec![Value::Uint(meta::Column::TABLE_ID)];
-        let (cursor, is_matched) = btree.search(&key).unwrap().unwrap();
+        let (mut cursor, is_matched) = btree.search(&key).unwrap().unwrap();
 
-        let (_, values) = cursor.get_entry().unwrap();
+        let (_, values) = cursor.next().unwrap();
 
         assert!(is_matched);
 

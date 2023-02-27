@@ -296,9 +296,10 @@ mod tests {
         }
 
         for i in range {
-            let (cursor, is_matched) = btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
+            let (mut cursor, is_matched) =
+                btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
 
-            let (_, value) = cursor.get_entry().unwrap();
+            let (_, value) = cursor.next().unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);
@@ -331,9 +332,10 @@ mod tests {
         }
 
         for &i in nums.iter() {
-            let (cursor, is_matched) = btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
+            let (mut cursor, is_matched) =
+                btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
 
-            let (_, value) = cursor.get_entry().unwrap();
+            let (_, value) = cursor.next().unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);
@@ -369,9 +371,10 @@ mod tests {
         let btree2 = BTree::new(key_codec, 30, file_node, &manager);
 
         for i in range {
-            let (cursor, is_matched) = btree2.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
+            let (mut cursor, is_matched) =
+                btree2.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
 
-            let (_, value) = cursor.get_entry().unwrap();
+            let (_, value) = cursor.next().unwrap();
 
             assert!(is_matched);
             assert_eq!(&[i * 2 + 5].as_ref(), &value);

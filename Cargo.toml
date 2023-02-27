@@ -9,6 +9,7 @@ snafu = { version = "0.7", features = ["backtraces-impl-std"] }
 
 access = { path = "./crates/access" }
 ast = { path = "./crates/ast" }
+binder = { path = "./crates/binder" }
 bound-ast = { path = "./crates/bound-ast" }
 common = { path = "./crates/common" }
 def = { path = "./crates/def" }
