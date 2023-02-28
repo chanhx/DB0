@@ -24,7 +24,7 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl Executor {
+impl Executor<'_> {
     pub(crate) fn create_table(
         &self,
         stmt: CreateTableStmt,
