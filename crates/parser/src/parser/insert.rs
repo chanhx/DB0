@@ -53,7 +53,9 @@ impl<'a> Parser<'a> {
 mod tests {
     use {
         super::*,
-        ast::{expr::*, identifier_from_str, ColumnRef, FromItem, Query, SelectFrom, TargetElem},
+        ast::{
+            expr::*, identifier_from_str, ColumnRef, Query, TableFactor, TableReference, TargetElem,
+        },
     };
 
     #[test]
@@ -97,13 +99,13 @@ mod tests {
                             alias: None,
                         },
                     ],
-                    from: Some(SelectFrom {
-                        item: FromItem::Table {
+                    from: vec![TableReference {
+                        factor: TableFactor::Table {
                             name: identifier_from_str("abc"),
                             alias: None,
                         },
                         joins: vec![],
-                    }),
+                    }],
                     cond: None,
                 })),
             }),

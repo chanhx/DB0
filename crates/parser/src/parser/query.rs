@@ -7,7 +7,7 @@ use {
     ast::{
         expr::*,
         token::{Keyword, Token},
-        FromItem, JoinItem, Query, SelectFrom, Spanned, TargetElem,
+        JoinItem, Query, Spanned, TableFactor, TableReference, TargetElem,
     },
     def::JoinType,
 };
@@ -44,12 +44,16 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_from_clause(&mut self) -> Result<Option<SelectFrom>> {
+    fn parse_from_clause(&mut self) -> Result<Vec<TableReference>> {
         if self.try_match(Token::Keyword(Keyword::FROM)).is_none() {
-            return Ok(None);
+            return Ok(Vec::new());
         };
 
-        let from_item = self.parse_from_item()?;
+        self.parse_comma_separated(Self::parse_table_with_joins)
+    }
+
+    fn parse_table_with_joins(&mut self) -> Result<TableReference> {
+        let from_item = self.parse_table_factor()?;
         let mut joins = vec![];
 
         loop {
@@ -59,19 +63,19 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Some(SelectFrom {
-            item: from_item,
+        Ok(TableReference {
+            factor: from_item,
             joins,
-        }))
+        })
     }
 
-    fn parse_from_item(&mut self) -> Result<FromItem> {
+    fn parse_table_factor(&mut self) -> Result<TableFactor> {
         Ok(match_token!(self.tokens.next(), {
             Spanned(Token::Identifier, span) => {
                 let name = self.identifier_from_span(span);
                 let alias = self.parse_alias()?;
 
-                FromItem::Table { name, alias }
+                TableFactor::Table { name, alias }
             },
             Spanned(Token::LeftParen, _) => {
                 self.must_match(Token::Keyword(Keyword::SELECT))?;
@@ -79,7 +83,7 @@ impl<'a> Parser<'a> {
                 self.must_match(Token::RightParen)?;
                 let alias = self.parse_alias()?;
 
-                FromItem::SubQuery {
+                TableFactor::SubQuery {
                     query: Box::new(subquery),
                     alias,
                 }
@@ -110,7 +114,7 @@ impl<'a> Parser<'a> {
         };
         self.must_match(Token::Keyword(Keyword::JOIN))?;
 
-        let item = self.parse_from_item()?;
+        let table_factor = self.parse_table_factor()?;
         let cond = match self.try_match(Token::Keyword(Keyword::ON)) {
             Some(_) => Some(self.parse_expr()?),
             None => None,
@@ -118,7 +122,7 @@ impl<'a> Parser<'a> {
 
         Ok(Some(JoinItem {
             join_type,
-            item,
+            table_factor,
             cond,
         }))
     }
@@ -159,13 +163,13 @@ mod tests {
                     alias: Some("de".into()),
                 },
             ],
-            from: Some(SelectFrom {
-                item: FromItem::Table {
+            from: vec![TableReference {
+                factor: TableFactor::Table {
                     name: identifier_from_str("abc"),
                     alias: None,
                 },
                 joins: vec![JoinItem {
-                    item: FromItem::Table {
+                    table_factor: TableFactor::Table {
                         name: identifier_from_str("def"),
                         alias: Some(identifier_from_str("d")),
                     },
@@ -181,7 +185,7 @@ mod tests {
                         })),
                     ))),
                 }],
-            }),
+            }],
             cond: Some(Expression::Operation(Operation::Equal(
                 Box::new(Expression::Column(ColumnRef {
                     column: identifier_from_str("c"),

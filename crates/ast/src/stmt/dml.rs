@@ -5,7 +5,7 @@ use {
 };
 
 #[derive(Debug, PartialEq)]
-pub enum FromItem {
+pub enum TableFactor {
     Table {
         name: Identifier,
         alias: Option<Identifier>,
@@ -45,20 +45,20 @@ pub_fields_struct! {
     struct Query {
         distinct: bool,
         targets: Vec<TargetElem>,
-        from: Option<SelectFrom>,
+        from: Vec<TableReference>,
         cond: Option<Expression>,
     }
 
     #[derive(Debug, PartialEq)]
     struct JoinItem {
         join_type: JoinType,
-        item: FromItem,
+        table_factor: TableFactor,
         cond: Option<Expression>,
     }
 
     #[derive(Debug, PartialEq)]
-    struct SelectFrom {
-        item: FromItem,
+    struct TableReference {
+        factor: TableFactor,
         joins: Vec<JoinItem>,
     }
 }
