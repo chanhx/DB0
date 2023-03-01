@@ -150,14 +150,14 @@ mod tests {
             targets: vec![
                 TargetElem::Expr {
                     expr: Expression::Column(ColumnRef {
-                        column: identifier_from_str("a"),
+                        name: identifier_from_str("a"),
                         table: None,
                     }),
                     alias: None,
                 },
                 TargetElem::Expr {
                     expr: Expression::Column(ColumnRef {
-                        column: identifier_from_str("e"),
+                        name: identifier_from_str("e"),
                         table: Some(identifier_from_str("d")),
                     }),
                     alias: Some("de".into()),
@@ -176,11 +176,11 @@ mod tests {
                     join_type: JoinType::Inner,
                     cond: Some(Expression::Operation(Operation::Equal(
                         Box::new(Expression::Column(ColumnRef {
-                            column: identifier_from_str("a"),
+                            name: identifier_from_str("a"),
                             table: Some(identifier_from_str("abc")),
                         })),
                         Box::new(Expression::Column(ColumnRef {
-                            column: identifier_from_str("f"),
+                            name: identifier_from_str("f"),
                             table: Some(identifier_from_str("d")),
                         })),
                     ))),
@@ -188,7 +188,7 @@ mod tests {
             }],
             cond: Some(Expression::Operation(Operation::Equal(
                 Box::new(Expression::Column(ColumnRef {
-                    column: identifier_from_str("c"),
+                    name: identifier_from_str("c"),
                     table: None,
                 })),
                 Box::new(Expression::Literal(Literal::Int(0))),

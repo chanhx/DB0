@@ -6,4 +6,5 @@ pub use stmt::*;
 pub enum Statement {
     CreateTable(CreateTableStmt),
     Insert(InsertStmt),
+    Select(Query),
 }

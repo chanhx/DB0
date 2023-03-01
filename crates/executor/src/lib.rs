@@ -26,6 +26,7 @@ impl Executor<'_> {
                 self.create_table(stmt, manager).context(CreateTableSnafu)
             }
             Statement::Insert(stmt) => self.insert(stmt, manager).context(InsertSnafu),
+            Statement::Select(_) => unimplemented!(),
         }
     }
 }

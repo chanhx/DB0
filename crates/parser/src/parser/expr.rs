@@ -55,14 +55,13 @@ impl<'a> Parser<'a> {
                     },
                     Some(Ok(Spanned(Token::Period, _))) => {
                         self.tokens.next();
-                        let column = self.parse_identifier()?;
                         Expression::Column(ColumnRef {
-                            column,
+                            name: self.parse_identifier()?,
                             table: Some(id),
                         })
                     },
                     _ => Expression::Column(ColumnRef {
-                        column: id,
+                        name: id,
                         table: None,
                     })
                 }
@@ -101,11 +100,11 @@ mod tests {
             Box::new(Expression::Operation(Operation::Add(
                 Box::new(Expression::Operation(Operation::Add(
                     Box::from(Expression::Column(ColumnRef {
-                        column: identifier_from_str("a"),
+                        name: identifier_from_str("a"),
                         table: None,
                     })),
                     Box::from(Expression::Column(ColumnRef {
-                        column: identifier_from_str("c"),
+                        name: identifier_from_str("c"),
                         table: Some(identifier_from_str("b")),
                     })),
                 ))),

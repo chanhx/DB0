@@ -30,7 +30,7 @@ pub fn identifier_from_str(s: &str) -> Identifier {
 pub_fields_struct! {
     #[derive(Debug, PartialEq)]
     struct ColumnRef {
-        column: Identifier,
+        name: Identifier,
         table: Option<Identifier>,
     }
 }

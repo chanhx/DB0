@@ -86,14 +86,14 @@ mod tests {
                     targets: vec![
                         TargetElem::Expr {
                             expr: Expression::Column(ColumnRef {
-                                column: identifier_from_str("a"),
+                                name: identifier_from_str("a"),
                                 table: None,
                             }),
                             alias: None,
                         },
                         TargetElem::Expr {
                             expr: Expression::Column(ColumnRef {
-                                column: identifier_from_str("b"),
+                                name: identifier_from_str("b"),
                                 table: None,
                             }),
                             alias: None,
