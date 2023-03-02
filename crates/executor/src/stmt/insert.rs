@@ -27,7 +27,11 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 impl Executor<'_> {
-    pub(crate) fn insert(&self, stmt: InsertStmt, manager: &BufferManager) -> Result<usize> {
+    pub(crate) fn insert(
+        &self,
+        stmt: InsertStmt,
+        manager: &BufferManager,
+    ) -> Result<Vec<Vec<Value>>> {
         let InsertStmt {
             table,
             targets,
@@ -70,6 +74,6 @@ impl Executor<'_> {
             new_rows_count += 1;
         }
 
-        Ok(new_rows_count)
+        Ok(vec![vec![Value::Uint(new_rows_count)]])
     }
 }

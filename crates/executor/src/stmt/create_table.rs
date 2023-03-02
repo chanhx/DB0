@@ -29,7 +29,7 @@ impl Executor<'_> {
         &self,
         stmt: CreateTableStmt,
         manager: &BufferManager,
-    ) -> Result<usize> {
+    ) -> Result<Vec<Vec<Value>>> {
         let CreateTableStmt {
             if_not_exists,
             schema,
@@ -64,7 +64,7 @@ impl Executor<'_> {
         let file_node = FileNode::new(space_id, self.database, table_id);
         BTree::<Codec>::init(file_node, &manager).context(AccessSnafu)?;
 
-        Ok(1)
+        Ok(vec![vec![Value::Uint(1)]])
     }
 
     fn table_exists(&self, table: &str) -> bool {
