@@ -54,12 +54,11 @@ where
         match node {
             Node::Leaf(leaf) => {
                 let entry = leaf.get_entry(self.slot_num);
+                self.slot_num += 1;
 
                 if self.slot_num >= leaf.entries_count() {
                     self.page_num = leaf.next_page_num();
                     self.slot_num = 0;
-                } else {
-                    self.slot_num += 1;
                 }
 
                 entry
