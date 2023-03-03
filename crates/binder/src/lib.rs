@@ -114,7 +114,8 @@ impl Binder {
 
         let (key_codec, values_codec) = {
             let mut columns = meta::Column::columns();
-            let v_columns = columns.split_off(1);
+            // TODO: remove hard code
+            let v_columns = columns.split_off(2);
             let k_columns = columns;
 
             (Codec::new(k_columns), Codec::new(v_columns))
@@ -122,7 +123,7 @@ impl Binder {
 
         let btree = BTree::new(key_codec, 100, file_node, manager);
 
-        let key = vec![Value::Uint(TableId::MIN)];
+        let key = vec![Value::Uint(TableId::MIN), Value::SmallInt(i16::MIN)];
         let (cursor, _) = btree.search(&key).unwrap().unwrap();
 
         cursor
