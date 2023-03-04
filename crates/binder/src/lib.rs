@@ -136,4 +136,15 @@ impl Binder {
             })
             .collect()
     }
+
+    pub fn update_table(&mut self, table: meta::Table) {
+        self.tables
+            .insert((table.schema_id, table.name.clone()), table);
+    }
+
+    pub fn update_columns(&mut self, columns: Vec<meta::Column>) {
+        columns.into_iter().for_each(|col| {
+            self.columns.insert((col.table_id, col.name.clone()), col);
+        })
+    }
 }
