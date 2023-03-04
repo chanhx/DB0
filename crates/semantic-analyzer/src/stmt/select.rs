@@ -3,7 +3,7 @@ use {
     ast::{expr::Expression, ColumnRef, Spanned, TableFactor, TargetElem},
     bound_ast::{Query, QueryTarget, Statement},
     core::cmp::Ordering,
-    def::TableId,
+    def::{meta, TableId},
     snafu::prelude::*,
     std::collections::HashMap,
 };
@@ -35,7 +35,7 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl Analyzer<'_> {
+impl Analyzer {
     pub(crate) fn analyze_select(&self, query: ast::Query) -> Result<Statement> {
         let ast::Query {
             distinct,
@@ -52,12 +52,17 @@ impl Analyzer<'_> {
                 _ => return Err(UnsupportedSnafu.build()),
             };
 
-            let table_id = self.binder.get_table_id(1, table.0.clone()).ok_or(
-                TableNotExistsSnafu {
-                    name: table.clone(),
-                }
-                .build(),
-            )?;
+            let table_id = self
+                .binder
+                .read()
+                .unwrap()
+                .get_table_id(meta::SCHEMA_ID_PUBLIC, table.0.clone())
+                .ok_or(
+                    TableNotExistsSnafu {
+                        name: table.clone(),
+                    }
+                    .build(),
+                )?;
 
             if tables
                 .insert(alias.unwrap_or(table.clone()).0.clone(), table_id)
@@ -94,12 +99,17 @@ impl Analyzer<'_> {
                 .ok_or(TableNotExistsSnafu { name: table }.build())?
                 .to_owned();
 
-            let col = self.binder.get_column(table, column.name.0.clone()).ok_or(
-                ColumnNotExistsSnafu {
-                    column_ref: column.name,
-                }
-                .build(),
-            )?;
+            let col = self
+                .binder
+                .read()
+                .unwrap()
+                .get_column(table, column.name.0.clone())
+                .ok_or(
+                    ColumnNotExistsSnafu {
+                        column_ref: column.name,
+                    }
+                    .build(),
+                )?;
 
             Ok(QueryTarget {
                 table,
@@ -110,6 +120,8 @@ impl Analyzer<'_> {
                 .iter()
                 .filter_map(|(_, &table)| {
                     self.binder
+                        .read()
+                        .unwrap()
                         .get_column(table, column.name.0.clone())
                         .map(|col| QueryTarget {
                             table,

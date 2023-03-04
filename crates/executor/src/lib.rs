@@ -5,6 +5,7 @@ use {
     bound_ast::Statement,
     def::{DatabaseId, Value},
     snafu::prelude::*,
+    std::sync::{Arc, RwLock},
     storage::buffer::BufferManager,
 };
 
@@ -19,16 +20,20 @@ pub enum Error {
     Unspported,
 }
 
-pub struct Executor<'a> {
+pub struct Executor {
     database: DatabaseId,
-    binder: &'a Binder,
+    binder: Arc<RwLock<Binder>>,
 }
 
-impl Executor<'_> {
+impl Executor {
+    pub fn new(database: DatabaseId, binder: Arc<RwLock<Binder>>) -> Self {
+        Self { database, binder }
+    }
+
     pub fn execute(
         &self,
         stmt: Statement,
-        manager: &mut BufferManager,
+        manager: &BufferManager,
     ) -> Result<Vec<Vec<Value>>, Error> {
         match stmt {
             Statement::CreateTable(stmt) => {

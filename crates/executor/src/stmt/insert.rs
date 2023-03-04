@@ -26,7 +26,7 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl Executor<'_> {
+impl Executor {
     pub(crate) fn insert(
         &self,
         stmt: InsertStmt,
@@ -42,6 +42,7 @@ impl Executor<'_> {
 
         let columns_count;
         let (key_codec, values_codec) = {
+            let binder = self.binder.read().unwrap();
             // TODO: there should be some information about primary keys in metadata
             let mut columns = binder.get_columns(table);
             columns_count = columns.len();

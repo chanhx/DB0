@@ -68,7 +68,7 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl Analyzer<'_> {
+impl Analyzer {
     pub(crate) fn analyze_insert(&self, stmt: ast::InsertStmt) -> Result<Statement> {
         let ast::InsertStmt {
             table,
@@ -76,54 +76,61 @@ impl Analyzer<'_> {
             source,
         } = stmt;
 
-        let table_id = self.binder.get_table_id(1, table.0.clone()).ok_or(
-            TableNotExistsSnafu {
-                name: table.clone(),
-            }
-            .build(),
-        )?;
-
-        let columns = self.binder.get_columns(table_id);
-
-        let targets = match targets {
-            Some(targets) => {
-                let mut target_set = HashSet::new();
-                let targets = targets
-                    .into_iter()
-                    .map(
-                        |target| match self.binder.get_column(table_id, target.0.clone()) {
-                            Some(col) => {
-                                if !target_set.insert(col.num) {
-                                    return Err(DuplicateColumnSnafu { column: target }.build());
-                                }
-
-                                Ok(col)
-                            }
-                            None => Err(ColumnNotExistsSnafu {
-                                name: target,
-                                table: table.clone(),
-                            }
-                            .build()),
-                        },
-                    )
-                    .collect::<Result<Vec<_>>>()?;
-
-                // check if any non-null constraint is violated
-                if let Some(col) = columns
-                    .iter()
-                    .filter(|col| !target_set.contains(&col.num))
-                    .find(|col| !col.is_nullable)
-                {
-                    return Err(NullValueSnafu {
-                        column: col.name.clone(),
-                        table,
+        let (table_id, targets) = {
+            let binder = self.binder.read().unwrap();
+            let table_id = binder
+                .get_table_id(meta::SCHEMA_ID_PUBLIC, table.0.clone())
+                .ok_or(
+                    TableNotExistsSnafu {
+                        name: table.clone(),
                     }
-                    .build());
-                }
+                    .build(),
+                )?;
 
-                targets
-            }
-            None => columns,
+            let columns = binder.get_columns(table_id);
+
+            let targets = match targets {
+                Some(targets) => {
+                    let mut target_set = HashSet::new();
+                    let targets = targets
+                        .into_iter()
+                        .map(
+                            |target| match binder.get_column(table_id, target.0.clone()) {
+                                Some(col) => {
+                                    if !target_set.insert(col.num) {
+                                        return Err(DuplicateColumnSnafu { column: target }.build());
+                                    }
+
+                                    Ok(col)
+                                }
+                                None => Err(ColumnNotExistsSnafu {
+                                    name: target,
+                                    table: table.clone(),
+                                }
+                                .build()),
+                            },
+                        )
+                        .collect::<Result<Vec<_>>>()?;
+
+                    // check if any non-null constraint is violated
+                    if let Some(col) = columns
+                        .iter()
+                        .filter(|col| !target_set.contains(&col.num))
+                        .find(|col| !col.is_nullable)
+                    {
+                        return Err(NullValueSnafu {
+                            column: col.name.clone(),
+                            table,
+                        }
+                        .build());
+                    }
+
+                    targets
+                }
+                None => columns,
+            };
+
+            (table_id, targets)
         };
 
         let source = match source {

@@ -26,7 +26,7 @@ pub enum Error {
     },
 }
 
-impl Analyzer<'_> {
+impl Analyzer {
     pub(crate) fn analyze_create_table(
         &self,
         stmt: ast::CreateTableStmt,

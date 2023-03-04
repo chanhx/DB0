@@ -24,7 +24,7 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl Executor<'_> {
+impl Executor {
     pub(crate) fn create_table(
         &self,
         stmt: CreateTableStmt,
@@ -52,11 +52,17 @@ impl Executor<'_> {
             name,
             schema_id: schema,
         };
-        self.create_table_record(table, manager)?;
+        self.create_table_record(table.clone(), manager)?;
 
         // create new records in `column` table
         let columns = transform_columns(columns, table_id);
-        self.create_column_records(columns, manager)?;
+        self.create_column_records(columns.clone(), manager)?;
+
+        {
+            let mut binder = self.binder.try_write().unwrap();
+            binder.update_table(table);
+            binder.update_columns(columns);
+        }
 
         // create table file
         // TODO: determine table space by schema and database
@@ -72,6 +78,7 @@ impl Executor<'_> {
         false
     }
 
+    // TODO: just a reference of `table` should be enough
     fn create_table_record(&self, table: meta::Table, manager: &BufferManager) -> Result<()> {
         let file_node = FileNode::new(
             meta::TABLESPACE_ID_DEFAULT,

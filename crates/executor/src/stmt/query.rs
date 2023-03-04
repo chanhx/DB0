@@ -18,7 +18,7 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl Executor<'_> {
+impl Executor {
     // leave alone planning for now
     pub(crate) fn select(&self, stmt: Query, manager: &BufferManager) -> Result<Vec<Vec<Value>>> {
         let Query { targets, tables } = stmt;
@@ -29,8 +29,9 @@ impl Executor<'_> {
                 let file_node = FileNode::new(meta::TABLESPACE_ID_DEFAULT, self.database, table);
 
                 let (key_codec, values_codec) = {
+                    let binder = self.binder.read().unwrap();
                     // TODO: there should be some information about primary keys in metadata
-                    let mut columns = self.binder.get_columns(table);
+                    let mut columns = binder.get_columns(table);
                     let v_columns = columns.split_off(1);
                     let k_columns = columns;
 

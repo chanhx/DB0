@@ -1,6 +1,11 @@
 mod stmt;
 
-use {binder::Binder, bound_ast::Statement, snafu::prelude::*};
+use {
+    binder::Binder,
+    bound_ast::Statement,
+    snafu::prelude::*,
+    std::sync::{Arc, RwLock},
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -13,11 +18,15 @@ pub enum Error {
     Unspported,
 }
 
-pub struct Analyzer<'a> {
-    binder: &'a Binder,
+pub struct Analyzer {
+    binder: Arc<RwLock<Binder>>,
 }
 
-impl Analyzer<'_> {
+impl Analyzer {
+    pub fn new(binder: Arc<RwLock<Binder>>) -> Self {
+        Self { binder }
+    }
+
     pub fn analyze(&self, stmt: ast::Statement) -> Result<Statement, Error> {
         Ok(match stmt {
             ast::Statement::CreateTable(stmt) => {
