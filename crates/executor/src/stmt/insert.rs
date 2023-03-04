@@ -43,10 +43,11 @@ impl Executor<'_> {
         let columns_count;
         let (key_codec, values_codec) = {
             // TODO: there should be some information about primary keys in metadata
-            let mut columns = self.binder.get_columns(table);
+            let mut columns = binder.get_columns(table);
+            columns_count = columns.len();
+
             let v_columns = columns.split_off(1);
             let k_columns = columns;
-            columns_count = v_columns.len();
 
             (Codec::new(k_columns), Codec::new(v_columns))
         };
@@ -58,7 +59,7 @@ impl Executor<'_> {
         let mut values = vec![Value::Null; columns_count];
         for row in source {
             row.into_iter().zip(targets.iter()).for_each(|(v, &i)| {
-                values[i as usize] = v;
+                values[i as usize - 1] = v;
             });
 
             // TODO: no need to clone `values`, should update the `Encoder` trait

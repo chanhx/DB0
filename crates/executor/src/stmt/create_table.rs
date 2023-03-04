@@ -140,7 +140,7 @@ fn transform_columns(columns: Vec<Column>, table_id: TableId) -> Vec<meta::Colum
 
             meta::Column {
                 table_id,
-                num: i as i16,
+                num: i as i16 + 1,
                 name: col.name,
                 type_id,
                 type_len,
