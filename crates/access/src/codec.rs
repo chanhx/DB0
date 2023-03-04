@@ -126,7 +126,7 @@ impl Decoder for Codec {
                 }
             })
             .collect::<Result<_>>()
-            .map(|values| (values, reader.position() as usize))
+            .map(|values| (values, self.data_region_start + reader.position() as usize))
     }
 }
 
