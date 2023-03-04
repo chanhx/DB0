@@ -1,8 +1,6 @@
-mod cmd;
-
 use {
-    crate::cmd::Error as ExecutionError,
     clap::{arg, Command},
+    db0::cmd::{self, Error as ExecutionError},
     snafu::prelude::*,
     std::{env, path::PathBuf, process, str::FromStr},
 };

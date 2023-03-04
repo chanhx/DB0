@@ -119,8 +119,12 @@ name = "db0"
 version = "0.1.0"
 dependencies = [
  "access",
+ "binder",
  "clap",
  "def",
+ "executor",
+ "parser",
+ "semantic-analyzer",
  "snafu",
  "storage",
  "tempfile",

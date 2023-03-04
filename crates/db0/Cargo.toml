@@ -11,7 +11,11 @@ clap = "4.0"
 snafu.workspace = true
 
 access.workspace = true
+binder.workspace = true
 def.workspace = true
+executor.workspace = true
+parser.workspace = true
+semantic-analyzer.workspace = true
 storage.workspace = true
 
 [dev-dependencies]
