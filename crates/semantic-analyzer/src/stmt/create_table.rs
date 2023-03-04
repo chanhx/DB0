@@ -68,6 +68,7 @@ impl Analyzer {
                         }
                         ColumnConstraint::PrimaryKey => {
                             primary_key = Some(vec![i as ColumnNum]);
+                            is_nullable = false;
                         }
                         ColumnConstraint::NotNull => {
                             is_nullable = false;
