@@ -90,6 +90,8 @@ where
         let meta = Meta::new(meta_page_ref.as_slice_mut());
         meta.init(self.node_capacity as u32);
         meta.root = page_num;
+        meta.level = 1;
+        meta_page_ref.set_dirty();
 
         Ok(page_num)
     }
@@ -206,6 +208,7 @@ where
                         new_root.init(&raw_new_key, &raw_high_key, page_num, splited_page_num, 0);
 
                         meta.root = new_root_page.page_num();
+                        meta.level += 1;
                         meta_page.set_dirty();
                         new_root_page.set_dirty();
                     }

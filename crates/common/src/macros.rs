@@ -4,14 +4,14 @@ macro_rules! pub_fields_struct {
         $(
             $(#[$($attr:tt)*])*
             struct $name:ident {
-                $($field:ident: $t:ty,)*
+                $($(#[$meta:meta])* $field:ident: $t:ty,)*
             }
         )*
     } => {
         $(
             $(#[$($attr)*])*
             pub struct $name {
-                $(pub $field: $t),*
+                $($(#[$meta])* pub $field: $t),*
             }
         )*
     }
