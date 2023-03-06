@@ -86,18 +86,15 @@ impl DataType {
             Self::Float => (SqlType::Float, 4),
             Self::Double => (SqlType::Double, 8),
 
-            Self::Char(len) => (SqlType::Char, *len as u16),
-            Self::Varchar(len) => (SqlType::Varchar, *len as u16),
+            Self::Char(len) => (SqlType::Char, *len),
+            Self::Varchar(len) => (SqlType::Varchar, *len),
         }
     }
 }
 
 impl SqlType {
     pub const fn is_variable_length(&self) -> bool {
-        match self {
-            Self::Varchar => true,
-            _ => false,
-        }
+        matches!(self, Self::Varchar)
     }
 }
 

@@ -1,4 +1,4 @@
-use {crate::DataType, common::pub_fields_struct};
+use {crate::DataType, common::pub_fields_struct, std::hash::Hash};
 
 pub_fields_struct! {
     #[derive(Debug, Clone, PartialEq)]
@@ -12,6 +12,12 @@ pub_fields_struct! {
 impl PartialEq for super::Column {
     fn eq(&self, other: &Self) -> bool {
         self.table_id == other.table_id && self.num == other.num
+    }
+}
+
+impl Hash for super::Column {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.table_id, self.num).hash(state);
     }
 }
 
