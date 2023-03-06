@@ -1,6 +1,5 @@
 #![feature(macro_metavar_expr)]
 
-pub mod catalog;
 mod join;
 pub mod meta;
 pub mod storage;
