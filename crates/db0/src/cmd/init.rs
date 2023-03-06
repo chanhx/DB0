@@ -61,7 +61,7 @@ fn create_global_tables(
     let k_columns = columns;
     let key_codec = Codec::new(k_columns);
 
-    BTree::<Codec>::init(file_node, &manager).context(error::AccessSnafu)?;
+    BTree::<Codec>::init(file_node, manager).context(error::AccessSnafu)?;
     let mut btree = BTree::new(key_codec, 30, file_node, manager);
 
     let values_codec = Codec::new(v_columns);

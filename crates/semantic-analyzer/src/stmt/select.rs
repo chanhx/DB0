@@ -38,10 +38,10 @@ type Result<T> = std::result::Result<T, Error>;
 impl Analyzer {
     pub(crate) fn analyze_select(&self, query: ast::Query) -> Result<Statement> {
         let ast::Query {
-            distinct,
+            distinct: _,
             targets,
             from,
-            cond,
+            cond: _,
         } = query;
 
         let mut tables = HashMap::new();
@@ -77,7 +77,7 @@ impl Analyzer {
             .map(|t| match t {
                 TargetElem::Expr {
                     expr: Expression::Column(column),
-                    alias,
+                    alias: _,
                 } => self.bind_column_ref(column, &tables),
                 _ => Err(UnsupportedSnafu.build()),
             })

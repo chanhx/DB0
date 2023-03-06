@@ -53,7 +53,7 @@ impl<I: Iterator> MultiPeekable<I> {
     ) -> Option<I::Item> {
         let mut items = self.by_ref().take(n).collect::<VecDeque<_>>();
 
-        if items.len() < n || !items.iter().enumerate().all(|item| func(item)) {
+        if items.len() < n || !items.iter().enumerate().all(func) {
             self.buf.append(&mut items);
             return None;
         }

@@ -13,7 +13,7 @@ use {
 
 impl<'a> Parser<'a> {
     pub(super) fn identifier_from_span(&self, span: Span) -> Identifier {
-        Spanned(self.src[span.clone()].to_string(), span.clone())
+        Spanned(self.src[span.clone()].to_string(), span)
     }
 
     pub(super) fn string_from_span(&self, span: Span) -> String {
@@ -74,10 +74,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(self.parse_identifier()?));
         }
 
-        Ok(match self.try_match(Token::Identifier) {
-            Some(Spanned(_, span)) => Some(self.identifier_from_span(span)),
-            None => None,
-        })
+        Ok(self.try_match(Token::Identifier).map(|Spanned(_, span)| self.identifier_from_span(span)))
     }
 
     pub(super) fn parse_comma_separated_within_parentheses<T, F>(

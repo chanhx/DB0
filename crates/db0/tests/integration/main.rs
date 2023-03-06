@@ -20,7 +20,7 @@ fn insert_and_query() {
     let binder = Binder::new(1, &manager).unwrap();
     let binder = Arc::new(RwLock::new(binder));
     let analyzer = Analyzer::new(binder.clone());
-    let executor = Executor::new(1, binder.clone());
+    let executor = Executor::new(1, binder);
 
     let sql = "
         CREATE TABLE abc (a int PRIMARY KEY, b boolean);

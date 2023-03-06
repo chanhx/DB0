@@ -127,7 +127,7 @@ impl BufferManager {
             .context(error::IoSnafu)?;
 
         let tag = PageTag {
-            file_node: file_node.clone(),
+            file_node: *file_node,
             page_num,
         };
 
@@ -183,12 +183,10 @@ impl BufferManager {
 
     pub fn flush_pages(&self) -> Result<()> {
         self.descriptors
-            .iter()
-            .map(|desc| {
+            .iter().try_for_each(|desc| {
                 let buf_id = desc.borrow().buffer_id;
                 self.flush_page(buf_id)
             })
-            .collect()
     }
 
     pub(super) fn get_buffer_id(&self, page_tag: &PageTag) -> Option<BufferId> {
@@ -236,7 +234,7 @@ impl BufferDescriptor {
         self.state.swap(state, Ordering::SeqCst);
     }
 
-    fn pin(&self, write: bool) {}
+    fn pin(&self, _write: bool) {}
 }
 
 #[derive(Debug)]

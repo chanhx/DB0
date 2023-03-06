@@ -38,7 +38,7 @@ impl Executor {
                     (Codec::new(k_columns), Codec::new(v_columns))
                 };
 
-                let btree = BTree::new(key_codec, 100, file_node, &manager);
+                let btree = BTree::new(key_codec, 100, file_node, manager);
 
                 // FIXME: generate search key by key columns
                 let (cursor, _) = btree

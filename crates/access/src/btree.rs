@@ -82,7 +82,7 @@ where
 
         let mut root = Leaf::new(
             &mut root_page_ref,
-            self.node_capacity as usize,
+            self.node_capacity,
             &self.key_codec,
         );
         root.init(0, 0);

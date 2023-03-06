@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
         if self.try_match(Token::Keyword(Keyword::AS)).is_some() {
             let query = self.parse_select()?;
 
-            let columns = if columns.len() > 0 {
+            let columns = if !columns.is_empty() {
                 Some(columns)
             } else {
                 None

@@ -31,12 +31,12 @@ impl Executor {
         manager: &BufferManager,
     ) -> Result<Vec<Vec<Value>>> {
         let CreateTableStmt {
-            if_not_exists,
+            if_not_exists: _,
             schema,
             name,
             columns,
-            primary_key,
-            unique_constraints,
+            primary_key: _,
+            unique_constraints: _,
         } = stmt;
 
         // check if table with the same name exists in meta table `table`
@@ -68,12 +68,12 @@ impl Executor {
         // TODO: determine table space by schema and database
         let space_id = meta::TABLESPACE_ID_DEFAULT;
         let file_node = FileNode::new(space_id, self.database, table_id);
-        BTree::<Codec>::init(file_node, &manager).context(AccessSnafu)?;
+        BTree::<Codec>::init(file_node, manager).context(AccessSnafu)?;
 
         Ok(vec![vec![Value::Uint(1)]])
     }
 
-    fn table_exists(&self, table: &str) -> bool {
+    fn table_exists(&self, _table: &str) -> bool {
         // TODO: use index and cache
         false
     }

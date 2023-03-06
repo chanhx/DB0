@@ -171,7 +171,7 @@ impl<'a> SlottedPage<'a> {
         self.insert_slot(index, slot);
 
         self.header.slot_count += 1;
-        self.header.total_free_space -= space_cost as u16;
+        self.header.total_free_space -= space_cost;
         self.header.free_area_end = offset;
 
         Ok(())
@@ -201,7 +201,7 @@ impl<'a> SlottedPage<'a> {
         };
 
         *self.slots_mut().get_mut(index).unwrap() =
-            Slot::new(offset, len as u16, SlotState::Normal);
+            Slot::new(offset, len, SlotState::Normal);
 
         data.iter().fold(offset as usize, |start, d| {
             let next = start + d.len();

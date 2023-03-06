@@ -26,9 +26,9 @@ impl<'a> Iterator for Lexer<'a> {
 
         let token = match self.iter.peek() {
             Some((_, '\'')) => self.scan_string(),
-            Some((_, c)) if c.is_digit(10) => self.scan_number().map(|item| Ok(item)),
-            Some((_, c)) if c.is_alphabetic() => self.scan_identifier().map(|item| Ok(item)),
-            Some(_) => self.scan_symbol().map(|item| Ok(item)),
+            Some((_, c)) if c.is_ascii_digit() => self.scan_number().map(Ok),
+            Some((_, c)) if c.is_alphabetic() => self.scan_identifier().map(Ok),
+            Some(_) => self.scan_symbol().map(Ok),
             _ => None,
         };
 
@@ -85,16 +85,16 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan_number(&mut self) -> Option<Spanned<Token>> {
-        let begin = self.iter.next_if(|&(_, c)| c.is_digit(10))?.0;
+        let begin = self.iter.next_if(|&(_, c)| c.is_ascii_digit())?.0;
 
-        self.iter_next_while(|c| c.is_digit(10));
+        self.iter_next_while(|c| c.is_ascii_digit());
 
         let is_float = self.iter.next_if(|&(_, c)| c == '.').is_some();
 
-        self.iter_next_while(|c| c.is_digit(10));
+        self.iter_next_while(|c| c.is_ascii_digit());
         self.iter.next_if(|&(_, c)| c == 'e' || c == 'E');
         self.iter.next_if(|&(_, c)| c == '+' || c == '-');
-        self.iter_next_while(|c| c.is_digit(10));
+        self.iter_next_while(|c| c.is_ascii_digit());
 
         Some(Spanned(
             Token::Number { is_float },
@@ -182,7 +182,7 @@ mod tests {
     use {super::*, std::iter::zip};
 
     fn test(input: &str, expected_output: &[Result<Spanned<Token>>]) {
-        let lexer = Lexer::new(&input);
+        let lexer = Lexer::new(input);
         let output = lexer.collect::<Vec<_>>();
 
         assert_eq!(output, expected_output);
@@ -208,9 +208,9 @@ mod tests {
 
     fn make_test(input: &str, tokens: Vec<Token>) {
         let strs = input.split_whitespace().collect();
-        let expected_output = construct_expected_output(&input, strs, tokens);
+        let expected_output = construct_expected_output(input, strs, tokens);
 
-        test(&input, &expected_output);
+        test(input, &expected_output);
     }
 
     #[test]

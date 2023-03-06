@@ -46,7 +46,7 @@ impl<'a> Iterator for Parser<'a> {
             Ok(Spanned(Token::Keyword(Keyword::DROP), _)) => self.parse_drop(),
             Ok(Spanned(Token::Keyword(Keyword::INSERT), _)) => self.parse_insert(),
             Ok(Spanned(Token::Keyword(Keyword::SELECT), _)) => {
-                self.parse_select().map(|select| Statement::Select(select))
+                self.parse_select().map(Statement::Select)
             }
             Ok(Spanned(_, span)) => Err(Error::SyntaxError(span)),
             Err(e) => Err(Error::LexingError(e)),
