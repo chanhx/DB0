@@ -92,7 +92,7 @@ impl Binder {
         let btree = BTree::new(key_codec, 100, file_node, manager);
 
         let key = vec![Value::Uint(TableId::MIN)];
-        let (cursor, _) = btree.search(&key).unwrap().unwrap();
+        let (cursor, _) = btree.cursor(&key).unwrap().unwrap();
 
         cursor
             .into_iter()
@@ -124,7 +124,7 @@ impl Binder {
         let btree = BTree::new(key_codec, 100, file_node, manager);
 
         let key = vec![Value::Uint(TableId::MIN), Value::SmallInt(i16::MIN)];
-        let (cursor, _) = btree.search(&key).unwrap().unwrap();
+        let (cursor, _) = btree.cursor(&key).unwrap().unwrap();
 
         cursor
             .into_iter()

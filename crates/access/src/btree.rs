@@ -5,6 +5,9 @@ mod leaf;
 mod meta;
 mod node;
 
+#[cfg(test)]
+mod tests;
+
 pub use cursor::Cursor;
 use {
     self::{
@@ -16,6 +19,7 @@ use {
     def::storage::{Decoder, Encoder},
     error::Result,
     snafu::ResultExt,
+    std::collections::VecDeque,
     storage::{
         buffer::{BufferManager, BufferRef, FileNode, PageTag},
         PageNum,
@@ -62,7 +66,7 @@ where
 
     pub fn init(file_node: FileNode, manager: &BufferManager) -> Result<()> {
         let mut meta_page_ref = manager.new_page(&file_node).context(error::BufferSnafu)?;
-        let meta = Meta::new(meta_page_ref.as_slice_mut());
+        let meta = Meta::from_bytes_mut(meta_page_ref.as_slice_mut());
         meta.root = 0;
 
         meta_page_ref.set_dirty();
@@ -87,7 +91,7 @@ where
         let page_num = root_page_ref.page_num();
 
         let mut meta_page_ref = self.fetch_page(META_PAGE_NUM)?;
-        let meta = Meta::new(meta_page_ref.as_slice_mut());
+        let meta = Meta::from_bytes_mut(meta_page_ref.as_slice_mut());
         meta.init(self.node_capacity as u32);
         meta.root = page_num;
         meta.level = 1;
@@ -98,7 +102,7 @@ where
 
     fn root_page_num(&self) -> Result<PageNum> {
         let mut meta_page_ref = self.fetch_page(META_PAGE_NUM)?;
-        Ok(Meta::new(meta_page_ref.as_slice_mut()).root)
+        Ok(Meta::from_bytes(meta_page_ref.as_slice_mut()).root)
     }
 
     pub fn insert(&mut self, key: &K, value: &[u8]) -> Result<()> {
@@ -107,142 +111,132 @@ where
             page_num = self.create_root_page()?;
         }
 
-        let mut insert_effect;
-        let mut stack = None;
+        let mut insert_effect = None;
+        let (mut stack, _) = self.search(key)?;
 
-        loop {
+        while let Some(node) = stack.pop_back() {
+            let StackNode { page_num, slot_num } = node;
             let mut page_ref = self.fetch_page(page_num)?;
-
             let node = Node::new(&mut page_ref, self.node_capacity, &self.key_codec)?;
 
-            match node {
-                Node::Branch(branch) => {
-                    let (slot_num, child_page_num) = branch.find_child(key);
+            insert_effect = match (node, insert_effect.take()) {
+                (Node::Leaf(mut leaf), _) => leaf
+                    .insert(key, value, self.manager, &self.file_node)
+                    .unwrap(),
 
-                    stack = Some(Box::new(StackNode {
-                        page_num,
-                        slot_num,
-                        parent: stack,
-                    }));
-
-                    page_num = child_page_num;
-                }
-                Node::Leaf(mut leaf) => {
-                    if let Some(effect) = leaf
-                        .insert(key, value, self.manager, &self.file_node)
-                        .unwrap()
-                    {
-                        page_ref.set_dirty();
-                        insert_effect = effect;
-                        break;
+                (Node::Branch(mut branch), Some(InsertEffect::UpdateHighKey(high_key))) => {
+                    if branch.is_right_most_slot(slot_num) {
+                        branch.update_high_key(&high_key);
                     }
-
-                    return Ok(());
+                    None
                 }
-            }
+
+                (
+                    Node::Branch(mut branch),
+                    Some(InsertEffect::Split {
+                        raw_new_key,
+                        raw_high_key,
+                        splited_page_num,
+                    }),
+                ) => branch
+                    .insert(
+                        &raw_new_key,
+                        splited_page_num,
+                        slot_num,
+                        raw_high_key,
+                        self.manager,
+                        &self.file_node,
+                    )
+                    .unwrap(),
+                (Node::Branch(_), None) => break,
+            };
+
+            match insert_effect {
+                Some(_) => page_ref.set_dirty(),
+                None => return Ok(()),
+            };
         }
 
-        loop {
-            if let Some(stk) = stack {
-                let StackNode {
-                    slot_num,
-                    page_num,
-                    parent,
-                } = *stk;
-                stack = parent;
+        // split the root
+        if stack.is_empty() && let Some(InsertEffect::Split {
+            raw_new_key,
+            raw_high_key,
+            splited_page_num,
+        }) = insert_effect
+        {
+            let mut new_root_page = self
+                .manager
+                .new_page(&self.file_node)
+                .context(error::BufferSnafu)?;
+            let mut new_root = Branch::new(
+                new_root_page.as_slice_mut(),
+                self.node_capacity,
+                &self.key_codec,
+            );
+            new_root.init(&raw_new_key, &raw_high_key, page_num, splited_page_num, 0);
+            new_root_page.set_dirty();
 
-                let mut page_ref = self.fetch_page(page_num)?;
-
-                let mut branch =
-                    Branch::new(page_ref.as_slice_mut(), self.node_capacity, &self.key_codec);
-
-                match insert_effect {
-                    InsertEffect::UpdateHighKey(high_key) => {
-                        if branch.is_right_most_slot(slot_num) {
-                            branch.update_high_key(&high_key);
-                        }
-                        break;
-                    }
-                    InsertEffect::Split {
-                        raw_new_key,
-                        raw_high_key,
-                        splited_page_num,
-                    } => {
-                        if let Some(effect) = branch
-                            .insert(
-                                &raw_new_key,
-                                splited_page_num,
-                                slot_num,
-                                raw_high_key,
-                                self.manager,
-                                &self.file_node,
-                            )
-                            .unwrap()
-                        {
-                            page_ref.set_dirty();
-                            insert_effect = effect
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            } else {
-                match insert_effect {
-                    InsertEffect::Split {
-                        raw_new_key,
-                        raw_high_key,
-                        splited_page_num,
-                    } => {
-                        let mut meta_page = self.fetch_page(META_PAGE_NUM)?;
-                        let meta = Meta::new(meta_page.as_slice_mut());
-
-                        let mut new_root_page = self
-                            .manager
-                            .new_page(&self.file_node)
-                            .context(error::BufferSnafu)?;
-                        let mut new_root = Branch::new(
-                            new_root_page.as_slice_mut(),
-                            self.node_capacity,
-                            &self.key_codec,
-                        );
-                        new_root.init(&raw_new_key, &raw_high_key, page_num, splited_page_num, 0);
-
-                        meta.root = new_root_page.page_num();
-                        meta.level += 1;
-                        meta_page.set_dirty();
-                        new_root_page.set_dirty();
-                    }
-                    _ => {}
-                }
-                break;
-            }
+            let mut meta_page = self.fetch_page(META_PAGE_NUM)?;
+            let meta = Meta::from_bytes_mut(meta_page.as_slice_mut());
+            meta.root = new_root_page.page_num();
+            meta.level += 1;
+            meta_page.set_dirty();
         }
 
         Ok(())
     }
 
-    pub fn search<'b, 'c>(&'b self, key: &'c K) -> Result<Option<(Cursor<'a, 'b, C>, bool)>> {
-        let mut page_num = self.root_page_num()?;
+    fn search<'b, 'c>(&'b self, key: &'c K) -> Result<(VecDeque<StackNode>, bool)> {
+        let (mut page_num, level) = {
+            let meta_page = self.fetch_page(META_PAGE_NUM)?;
+            let meta = Meta::from_bytes(meta_page.as_slice());
 
-        loop {
+            (meta.root, meta.level as usize)
+        };
+
+        let mut stack = VecDeque::with_capacity(level);
+        let mut is_matched = false;
+
+        for i in 0..level {
             let mut page_ref = self.fetch_page(page_num)?;
 
             let node = Node::new(&mut page_ref, self.node_capacity, &self.key_codec)?;
+            let node = match node {
+                Node::Branch(_) if i == level - 1 => Err(error::InvalidTreeStructSnafu.build())?,
+                Node::Leaf(_) if i < level - 1 => Err(error::InvalidTreeStructSnafu.build())?,
 
-            match node {
-                Node::Branch(branch) => match branch.retrieve(key) {
-                    Some(num) => page_num = num,
-                    None => return Ok(None),
-                },
+                Node::Branch(branch) => {
+                    let (slot_num, child) = branch.search(key);
+                    let node = StackNode { page_num, slot_num };
+                    page_num = child;
+                    node
+                }
                 Node::Leaf(leaf) => {
-                    let (index, is_matched) = match leaf.search(key) {
+                    let (slot_num, matched) = match leaf.search(key) {
                         Ok(i) => (i, true),
                         Err(i) => (i, false),
                     };
 
-                    return Ok(Some((Cursor::new(self, page_num, index), is_matched)));
+                    is_matched = matched;
+
+                    StackNode { page_num, slot_num }
                 }
+            };
+
+            stack.push_back(node);
+        }
+
+        Ok((stack, is_matched))
+    }
+
+    pub fn cursor<'b, 'c>(&'b self, key: &'c K) -> Result<Option<(Cursor<'a, 'b, C>, bool)>> {
+        let (mut stack, is_matched) = self.search(key)?;
+
+        match stack.pop_back() {
+            Some(StackNode { page_num, slot_num }) => {
+                Ok(Some((Cursor::new(self, page_num, slot_num), is_matched)))
             }
+            _ => Err(error::InvalidTreeStructSnafu.build()),
         }
     }
 
@@ -263,128 +257,6 @@ where
 }
 
 struct StackNode {
-    slot_num: usize,
     page_num: PageNum,
-    parent: Option<Box<StackNode>>,
-}
-
-#[cfg(test)]
-mod tests {
-    use {
-        super::*,
-        crate::codec::Codec,
-        def::{meta::Column, SqlType, Value},
-        rand::prelude::*,
-        storage::DEFAULT_PAGE_SIZE,
-        tempfile::tempdir,
-    };
-
-    #[test]
-    fn sequential_insertion() -> Result<()> {
-        let dir = tempdir().unwrap();
-
-        let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
-        let codec = Codec::new(vec![attr]);
-
-        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
-        let file_node = FileNode::new(1, 2, 3);
-
-        BTree::<Codec>::init(file_node, &manager)?;
-        let mut btree = BTree::new(codec, 30, file_node, &manager);
-
-        let range = 0..120;
-
-        for i in range.clone() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5])?;
-        }
-
-        for i in range {
-            let (mut cursor, is_matched) =
-                btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
-
-            let (_, value) = cursor.next().unwrap();
-
-            assert!(is_matched);
-            assert_eq!(&[i * 2 + 5].as_ref(), &value);
-        }
-
-        dir.close().unwrap();
-
-        Ok(())
-    }
-
-    #[test]
-    fn random_insertion() -> Result<()> {
-        let dir = tempdir().unwrap();
-
-        let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
-        let codec = Codec::new(vec![attr]);
-
-        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
-        let file_node = FileNode::new(1, 2, 3);
-
-        BTree::<Codec>::init(file_node, &manager)?;
-        let mut btree = BTree::new(codec, 30, file_node, &manager);
-
-        let mut rng = rand::thread_rng();
-        let mut nums: Vec<u8> = (0..120).collect();
-        nums.shuffle(&mut rng);
-
-        for &i in nums.iter() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5])?;
-        }
-
-        for &i in nums.iter() {
-            let (mut cursor, is_matched) =
-                btree.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
-
-            let (_, value) = cursor.next().unwrap();
-
-            assert!(is_matched);
-            assert_eq!(&[i * 2 + 5].as_ref(), &value);
-        }
-
-        dir.close().unwrap();
-
-        Ok(())
-    }
-
-    #[test]
-    fn flush() -> Result<()> {
-        let dir = tempdir().unwrap();
-
-        let attr = Column::new(1, 1, "abc".to_string(), SqlType::TinyUint, 4, false);
-        let key_codec = Codec::new(vec![attr]);
-
-        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
-        let file_node = FileNode::new(1, 2, 3);
-
-        BTree::<Codec>::init(file_node, &manager)?;
-        let mut btree = BTree::new(key_codec.clone(), 30, file_node, &manager);
-
-        let range = 0..120;
-
-        for i in range.clone() {
-            btree.insert(&vec![Value::TinyUint(i)], &[i * 2 + 5])?;
-        }
-
-        manager.flush_pages().unwrap();
-
-        let manager = BufferManager::new(10, DEFAULT_PAGE_SIZE, dir.path().to_path_buf());
-        let btree2 = BTree::new(key_codec, 30, file_node, &manager);
-
-        for i in range {
-            let (mut cursor, is_matched) =
-                btree2.search(&vec![Value::TinyUint(i)]).unwrap().unwrap();
-
-            let (_, value) = cursor.next().unwrap();
-
-            assert!(is_matched);
-            assert_eq!(&[i * 2 + 5].as_ref(), &value);
-        }
-
-        dir.close().unwrap();
-
-        Ok(())
-    }
+    slot_num: usize,
 }

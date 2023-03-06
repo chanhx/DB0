@@ -34,6 +34,11 @@ pub enum Error {
         key: String,
     },
 
+    #[snafu(display("B-tree structure is invalid"))]
+    InvalidTreeStruct {
+        backtrace: Backtrace,
+    },
+
     Decoding {
         // #[snafu(backtrace)]
         source: Box<dyn std::error::Error>,

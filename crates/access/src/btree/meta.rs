@@ -1,5 +1,8 @@
 use {
-    super::PageType, bytemuck::from_bytes_mut, common::pub_fields_struct, core::mem::size_of,
+    super::PageType,
+    bytemuck::{from_bytes, from_bytes_mut},
+    common::pub_fields_struct,
+    core::mem::size_of,
     storage::PageNum,
 };
 
@@ -22,8 +25,12 @@ unsafe impl bytemuck::Zeroable for Meta {}
 unsafe impl bytemuck::Pod for Meta {}
 
 impl Meta {
-    pub fn new(bytes: &mut [u8]) -> &mut Self {
+    pub fn from_bytes_mut(bytes: &mut [u8]) -> &mut Self {
         from_bytes_mut(&mut bytes[..size_of::<Meta>()])
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> &Self {
+        from_bytes(&bytes[..size_of::<Meta>()])
     }
 
     pub fn init(&mut self, node_capacity: u32) {

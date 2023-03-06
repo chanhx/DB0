@@ -42,7 +42,7 @@ impl Executor {
 
                 // FIXME: generate search key by key columns
                 let (cursor, _) = btree
-                    .search(&vec![Value::Null])
+                    .cursor(&vec![Value::Null])
                     .context(AccessSnafu)?
                     .unwrap();
 

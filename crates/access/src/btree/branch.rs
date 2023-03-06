@@ -204,7 +204,7 @@ where
     //     self.slotted_page.delete(index).ok()
     // }
 
-    pub(super) fn find_child(&self, key: &K) -> (usize, PageNum) {
+    pub(super) fn search(&self, key: &K) -> (usize, PageNum) {
         let slots = &self.slotted_page.slots();
 
         let index = match slots[..self.slotted_page.slot_count() - 1]
