@@ -14,7 +14,6 @@ pub_fields_struct! {
         /// the count of tree levels
         level: u8,
         // page_size: u8,
-        node_capacity: u32,
         magic: u32,
         version: u32,
         root: PageNum,
@@ -33,10 +32,9 @@ impl Meta {
         from_bytes(&bytes[..size_of::<Meta>()])
     }
 
-    pub fn init(&mut self, node_capacity: u32) {
+    pub fn init(&mut self) {
         self.level = 0;
         self.page_type = PageType::Meta;
-        self.node_capacity = node_capacity;
     }
 }
 

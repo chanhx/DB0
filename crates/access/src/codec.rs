@@ -99,6 +99,10 @@ impl Encoder for Codec {
 
         Ok(bytes)
     }
+
+    fn max_size(&self) -> usize {
+        self.columns.iter().map(|col| col.type_len).sum::<u16>() as usize + self.data_region_start
+    }
 }
 
 impl Decoder for Codec {

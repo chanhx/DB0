@@ -1,6 +1,6 @@
 use {
     super::{error, node::InsertEffect, PageType, Result},
-    crate::slotted_page::SlottedPage,
+    crate::slotted_page::{Slot, SlottedPage},
     bytemuck::from_bytes_mut,
     core::{mem::size_of, ops::Range},
     def::storage::{Decoder, Encoder},
@@ -67,6 +67,12 @@ where
         self.slotted_page.insert(1, &right).unwrap();
 
         self.header.right_sibling = sibling;
+    }
+
+    pub(super) fn capacity(page_size: usize, key_size: usize) -> usize {
+        const RESERVED: usize = 64;
+        (page_size - size_of::<Header>() - RESERVED)
+            / (size_of::<Slot>() + key_size + size_of::<PageNum>())
     }
 
     fn raw_key(&self, range: Range<usize>) -> Vec<u8> {
@@ -196,7 +202,7 @@ where
         let data = [high_key, &page_num];
 
         let index = self.slotted_page.slot_count() - 1;
-        self.slotted_page.update_slot(index, &data);
+        self.slotted_page.update_slot(index, &data).unwrap();
     }
 
     // // TODO: rebalance

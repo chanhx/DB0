@@ -94,7 +94,7 @@ impl Executor {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let mut btree = BTree::new(key_codec, 30, file_node, manager);
+        let mut btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         let mut kv: Vec<Value> = table.into();
         let values = kv.split_off(1);
@@ -123,7 +123,7 @@ impl Executor {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let mut btree = BTree::new(key_codec, 30, file_node, manager);
+        let mut btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         columns.into_iter().for_each(|column| {
             let mut kv: Vec<Value> = column.into();

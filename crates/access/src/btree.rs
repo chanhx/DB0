@@ -22,7 +22,7 @@ use {
     std::collections::VecDeque,
     storage::{
         buffer::{BufferManager, BufferRef, FileNode, PageTag},
-        PageNum,
+        PageNum, DEFAULT_PAGE_SIZE,
     },
 };
 
@@ -52,13 +52,22 @@ where
 {
     pub fn new(
         key_codec: C,
-        node_capacity: u32,
+        max_value_size: usize,
+        // page_size: usize,
         file_node: FileNode,
         manager: &'a BufferManager,
     ) -> Self {
+        let max_key_size = key_codec.max_size();
+        let max_entry_size = max_key_size + max_value_size;
+
+        let leaf_capacity = Leaf::<C>::capacity(DEFAULT_PAGE_SIZE, max_entry_size);
+        let branch_capacity = Branch::<C>::capacity(DEFAULT_PAGE_SIZE, max_key_size);
+
+        let node_capacity = leaf_capacity.min(branch_capacity);
+
         Self {
             key_codec,
-            node_capacity: node_capacity as usize,
+            node_capacity,
             file_node,
             manager,
         }
@@ -80,11 +89,7 @@ where
             .new_page(&self.file_node)
             .context(error::BufferSnafu)?;
 
-        let mut root = Leaf::new(
-            &mut root_page_ref,
-            self.node_capacity,
-            &self.key_codec,
-        );
+        let mut root = Leaf::new(&mut root_page_ref, self.node_capacity, &self.key_codec);
         root.init(0, 0);
         root_page_ref.set_dirty();
 
@@ -92,7 +97,7 @@ where
 
         let mut meta_page_ref = self.fetch_page(META_PAGE_NUM)?;
         let meta = Meta::from_bytes_mut(meta_page_ref.as_slice_mut());
-        meta.init(self.node_capacity as u32);
+        meta.init();
         meta.root = page_num;
         meta.level = 1;
         meta_page_ref.set_dirty();

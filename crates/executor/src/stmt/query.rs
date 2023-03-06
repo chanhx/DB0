@@ -2,7 +2,11 @@ use {
     crate::Executor,
     access::{btree::BTree, Codec},
     bound_ast::Query,
-    def::{meta, storage::Decoder, Value},
+    def::{
+        meta,
+        storage::{Decoder, Encoder},
+        Value,
+    },
     snafu::{prelude::*, ResultExt},
     std::collections::HashMap,
     storage::buffer::{BufferManager, FileNode},
@@ -38,7 +42,7 @@ impl Executor {
                     (Codec::new(k_columns), Codec::new(v_columns))
                 };
 
-                let btree = BTree::new(key_codec, 100, file_node, manager);
+                let btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
                 // FIXME: generate search key by key columns
                 let (cursor, _) = btree

@@ -3,7 +3,7 @@ use {
     core::{default::Default, ops::Bound::Excluded},
     def::{
         meta::{self, MetaTable},
-        storage::Decoder,
+        storage::{Decoder, Encoder},
         DatabaseId, SchemaId, TableId, Value,
     },
     snafu::prelude::*,
@@ -89,7 +89,7 @@ impl Binder {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let btree = BTree::new(key_codec, 100, file_node, manager);
+        let btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         let key = vec![Value::Uint(TableId::MIN)];
         let (cursor, _) = btree.cursor(&key).unwrap().unwrap();
@@ -121,7 +121,7 @@ impl Binder {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let btree = BTree::new(key_codec, 100, file_node, manager);
+        let btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         let key = vec![Value::Uint(TableId::MIN), Value::SmallInt(i16::MIN)];
         let (cursor, _) = btree.cursor(&key).unwrap().unwrap();

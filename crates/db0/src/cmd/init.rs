@@ -60,11 +60,11 @@ fn create_global_tables(
     let v_columns = columns.split_off(1);
     let k_columns = columns;
     let key_codec = Codec::new(k_columns);
+    let values_codec = Codec::new(v_columns);
 
     BTree::<Codec>::init(file_node, manager).context(error::AccessSnafu)?;
-    let mut btree = BTree::new(key_codec, 30, file_node, manager);
+    let mut btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
-    let values_codec = Codec::new(v_columns);
     let values = values_codec.encode(&values).unwrap();
 
     btree.insert(&key, &values).unwrap();
@@ -91,7 +91,7 @@ fn init_database(manager: &BufferManager, database_id: DatabaseId) -> Result<()>
         };
 
         BTree::<Codec>::init(file_node, manager).context(error::AccessSnafu)?;
-        let mut btree = BTree::new(key_codec, 30, file_node, manager);
+        let mut btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         for table in tables {
             let mut kv: Vec<Value> = table.into();
@@ -121,7 +121,7 @@ fn init_database(manager: &BufferManager, database_id: DatabaseId) -> Result<()>
         };
 
         BTree::<Codec>::init(file_node, manager).context(error::AccessSnafu)?;
-        let mut btree = BTree::new(key_codec, 30, file_node, manager);
+        let mut btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         columns.into_iter().flatten().for_each(|column| {
             let mut kv: Vec<Value> = column.into();
@@ -159,7 +159,7 @@ mod tests {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let btree = BTree::new(key_codec, 100, file_node, &manager);
+        let btree = BTree::new(key_codec, values_codec.max_size(), file_node, &manager);
 
         let key = vec![Value::Uint(meta::Column::TABLE_ID)];
         let (mut cursor, is_matched) = btree.cursor(&key).unwrap().unwrap();

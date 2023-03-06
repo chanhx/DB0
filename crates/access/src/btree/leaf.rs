@@ -1,6 +1,6 @@
 use {
     super::{error, InsertEffect, PageType, Result},
-    crate::slotted_page::SlottedPage,
+    crate::slotted_page::{Slot, SlottedPage},
     bytemuck::from_bytes_mut,
     core::{mem::size_of, ops::Range},
     def::storage::{Decoder, Encoder},
@@ -57,6 +57,11 @@ where
         self.header.prev_page_num = prev_page_num;
 
         self.slotted_page.init();
+    }
+
+    pub(super) fn capacity(page_size: usize, entry_size: usize) -> usize {
+        const RESERVED: usize = 64;
+        (page_size - size_of::<Header>() - RESERVED) / (size_of::<Slot>() + entry_size)
     }
 
     fn raw_key(&self, range: Range<usize>) -> Vec<u8> {

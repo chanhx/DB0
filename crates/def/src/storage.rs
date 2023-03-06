@@ -3,6 +3,7 @@ pub trait Encoder {
     type Error: std::error::Error + 'static;
 
     fn encode(&self, item: &Self::Item) -> Result<Vec<u8>, Self::Error>;
+    fn max_size(&self) -> usize;
 }
 
 pub trait Decoder {

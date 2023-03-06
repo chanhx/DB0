@@ -53,7 +53,7 @@ impl Executor {
             (Codec::new(k_columns), Codec::new(v_columns))
         };
 
-        let mut btree = BTree::new(key_codec, 100, file_node, manager);
+        let mut btree = BTree::new(key_codec, values_codec.max_size(), file_node, manager);
 
         let mut new_rows_count = 0;
 
