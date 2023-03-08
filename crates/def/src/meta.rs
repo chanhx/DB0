@@ -15,12 +15,14 @@ use {
 pub use {column::*, database::*, schema::*, table::*, tablespace::*};
 
 #[repr(u32)]
-enum MetaTableId {
+pub enum MetaTableId {
     Tablespace = 1,
     Database,
     Schema,
     Table,
     Column,
+
+    Reserved = 1000,
 }
 
 pub trait MetaTable {

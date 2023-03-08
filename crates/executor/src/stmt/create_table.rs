@@ -45,8 +45,10 @@ impl Executor {
         };
 
         // create a new record in `table` table
-        // TODO: generate an id for new table
-        let table_id = 123;
+        let table_id = {
+            let binder = self.binder.read().unwrap();
+            binder.get_next_table_id()
+        };
         let table = meta::Table {
             id: table_id,
             name,

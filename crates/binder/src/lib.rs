@@ -2,12 +2,15 @@ use {
     access::{BTree, Codec},
     core::{default::Default, ops::Bound::Excluded},
     def::{
-        meta::{self, MetaTable},
+        meta::{self, MetaTable, MetaTableId},
         storage::{Decoder, Encoder},
         DatabaseId, SchemaId, TableId, Value,
     },
     snafu::prelude::*,
-    std::collections::BTreeMap,
+    std::{
+        collections::BTreeMap,
+        sync::atomic::{AtomicU32, Ordering},
+    },
     storage::buffer::{BufferManager, FileNode},
 };
 
@@ -24,6 +27,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 pub struct Binder {
     database: DatabaseId,
+    next_table_id: AtomicU32,
     tables: BTreeMap<(SchemaId, String), meta::Table>,
     columns: BTreeMap<(TableId, String), meta::Column>,
 }
@@ -32,6 +36,7 @@ impl Binder {
     pub fn new(database: DatabaseId, manager: &BufferManager) -> Result<Self> {
         let mut binder = Self {
             database,
+            next_table_id: Default::default(),
             tables: Default::default(),
             columns: Default::default(),
         };
@@ -60,8 +65,19 @@ impl Binder {
         self.columns.get(&(table_id, name)).cloned()
     }
 
+    pub fn get_next_table_id(&self) -> TableId {
+        self.next_table_id.fetch_add(1, Ordering::SeqCst)
+    }
+
     fn build_index(&mut self, manager: &BufferManager) -> Result<()> {
         let tables = self.load_tables(manager)?;
+        let last_table_id = tables.last().unwrap().id;
+        self.next_table_id = if last_table_id < MetaTableId::Reserved as u32 {
+            AtomicU32::new(MetaTableId::Reserved as u32 + 1)
+        } else {
+            AtomicU32::new(last_table_id + 1)
+        };
+
         tables.into_iter().for_each(|tbl| {
             self.tables.insert((tbl.schema_id, tbl.name.clone()), tbl);
         });
