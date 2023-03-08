@@ -5,7 +5,7 @@ use {
     def::{
         meta::{self, MetaTable},
         storage::Encoder,
-        TableId, Value,
+        SchemaId, TableId, Value,
     },
     snafu::prelude::*,
     storage::buffer::{BufferManager, FileNode},
@@ -40,7 +40,7 @@ impl Executor {
         } = stmt;
 
         // check if table with the same name exists in meta table `table`
-        if self.table_exists(&name) {
+        if self.table_exists(schema, &name) {
             return Err(TableExistsSnafu { name }.build());
         };
 
@@ -75,9 +75,12 @@ impl Executor {
         Ok(vec![vec![Value::Uint(1)]])
     }
 
-    fn table_exists(&self, _table: &str) -> bool {
-        // TODO: use index and cache
-        false
+    fn table_exists(&self, schema: SchemaId, table: &str) -> bool {
+        self.binder
+            .read()
+            .unwrap()
+            .get_table_id(schema, table.to_string())
+            .is_some()
     }
 
     // TODO: just a reference of `table` should be enough
