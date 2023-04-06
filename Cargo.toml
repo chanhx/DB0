@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["binaries/*", "crates/*"]
 
 [workspace.package]
 edition = "2021"
