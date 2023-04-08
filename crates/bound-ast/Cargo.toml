@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 common.workspace = true
 def.workspace = true
+
+snafu.workspace = true
