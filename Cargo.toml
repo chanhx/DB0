@@ -7,17 +7,17 @@ edition = "2021"
 [workspace.dependencies]
 snafu = { version = "0.7", features = ["backtraces-impl-std"] }
 
-access = { path = "./crates/access" }
-ast = { path = "./crates/ast" }
-binder = { path = "./crates/binder" }
-bound-ast = { path = "./crates/bound-ast" }
-common = { path = "./crates/common" }
-def = { path = "./crates/def" }
-executor = { path = "./crates/executor" }
-parser = { path = "./crates/parser" }
-planner = { path = "./crates/planner" }
-semantic-analyzer = { path = "./crates/semantic-analyzer" }
-storage = { path = "./crates/storage" }
+access = { path = "crates/access" }
+ast = { path = "crates/ast" }
+binder = { path = "crates/binder" }
+bound-ast = { path = "crates/bound-ast" }
+common = { path = "crates/common" }
+def = { path = "crates/def" }
+executor = { path = "crates/executor" }
+parser = { path = "crates/parser" }
+plan = { path = "crates/plan" }
+semantic-analyzer = { path = "crates/semantic-analyzer" }
+storage = { path = "crates/storage" }
 
 # dev-dependencies
 tempfile = "3"
